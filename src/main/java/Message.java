@@ -6,10 +6,10 @@ import java.util.UUID;
 
 public class Message {
 
-    private final String id;    // unique for all messages
-    private final MessageMainType messageMainType;    // REQUEST/REPLY
-    private final MessageSubType messageSubType;  // CHAT, ONION, ...
-    private final String body;      // body of message
+    protected String id;    // unique for all messages
+    protected MessageMainType messageMainType;    // REQUEST/REPLY
+    protected MessageSubType messageSubType;  // CHAT, ONION, ...
+    protected String body;      // body of message
     // for ONION messages it has form: next_address connection_id inner_msg
 
 
@@ -57,6 +57,27 @@ public class Message {
         this.messageSubType = MessageSubType.valueOf(tokens[2]);
         this.body = tokens[3];
     }
+
+    // for OnionMessage constructor
+    protected Message(String id, MessageMainType messageMainType) throws IOException{
+        if(messageMainType == MessageMainType.REPLY){
+            if(id == null) {
+                Logger.log("REPLY messages need to have the same id as the corresponding REQUEST message", LogLevel.WARN);
+                throw new IOException();
+            }
+            this.id = id;
+        }else{
+            // type == Type.REQUEST
+            this.id = UUID.randomUUID().toString();
+        }
+        this.messageMainType = messageMainType;
+        this.messageSubType = MessageSubType.ONION;
+    }
+
+
+    // I don't know why, but every constructor in inheriting class needs to call super
+    // and if super isn't called in the first line it's an error
+    protected Message(){}
 
     // - static methods for more easily creating messages - like createCHAT
 
