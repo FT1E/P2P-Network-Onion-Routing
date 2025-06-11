@@ -127,11 +127,32 @@ public class Message {
     }
     // end PEER_DISCOVERY
 
+
     // KEY_EXCHANGE
-    // todo
+
+    // REQUEST KEY_EXCHANGE contains a public key, with which the symmetric key in the REPLY is encrypted with
+    public static Message createKEY_EXCHANGE_REQUEST(AsymmetricKeyPair keyPair){
+        try {
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.KEY_EXCHANGE, keyPair.encodePublicKey_toString());
+        } catch (IOException e) {
+            // redundant
+            return null;
+        }
+    }
+
+    // in REPLY KEY_EXCHANGE, the symmetric key is encrypted with the public key from the request
+    public static Message createKEY_EXCHANGE_REPLY(String id, AsymmetricKeyPair publicKey, SymmetricKey symmetricKey){
+        String body = publicKey.encryptPublic(symmetricKey.encodeKey_toString());
+        try {
+            return new Message(id, MessageMainType.REPLY, MessageSubType.KEY_EXCHANGE, body);
+        } catch (IOException e) {
+            return null;
+        }
+    }
     // end KEY_EXCHANGE
 
-    // todo - ONION is done in a separate class, inheriting message
+
+    // NOTE - ONION is done in a separate class, inheriting message
 
 
 

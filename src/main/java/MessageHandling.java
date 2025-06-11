@@ -1,4 +1,7 @@
+import Util.LogLevel;
 import Util.Logger;
+
+import java.security.spec.InvalidKeySpecException;
 
 public class MessageHandling {
     // includes static methods for processing messages
@@ -10,14 +13,14 @@ public class MessageHandling {
             switch (message.getMessageType()){
                 case CHAT -> handleCHAT_REQUEST(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REQUEST(message, sender);
-                case KEY_EXCHANGE -> Logger.log("Todo");
+                case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
                 case ONION -> Logger.log("Todo");
             }
         }else{
             switch (message.getMessageType()){
                 case CHAT -> handleCHAT_REPLY(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REPLY(message);
-                case KEY_EXCHANGE -> Logger.log("Todo");
+                case KEY_EXCHANGE -> handleKEY_EXCHANGE_REPLY(message);
                 case ONION -> Logger.log("Todo");
             }
         }
@@ -37,8 +40,22 @@ public class MessageHandling {
         sender.sendMessage(Message.createPEER_DISCOVERY_REPLY(message.getId(), sender.getAddress()));
     }
 
-    // todo - KEY_EXCHANGE
+    // - KEY_EXCHANGE
+    private static void handleKEY_EXCHANGE_REQUEST(Message message, Peer sender){
+        AsymmetricKeyPair publicKey = null;
+        try {
+            publicKey = new AsymmetricKeyPair(message.getBody());
+        } catch (InvalidKeySpecException e) {
+            Logger.log("Invalid public key encoding received in a KEY_EXCHANGE REQUEST", LogLevel.ERROR);
+            return;
+        }
 
+        SymmetricKey symmetricKey = new SymmetricKey();
+
+        // todo - store the symmetric key somewhere
+
+        sender.sendMessage(Message.createKEY_EXCHANGE_REPLY(message.getId(), publicKey, symmetricKey));
+    }
     // todo - ONION
 
     // end REQUEST Handlers
@@ -65,6 +82,9 @@ public class MessageHandling {
     }
 
     // todo - KEY_EXCHANGE
+    private static void handleKEY_EXCHANGE_REPLY(Message message){
+
+    }
 
     // todo - ONION
 

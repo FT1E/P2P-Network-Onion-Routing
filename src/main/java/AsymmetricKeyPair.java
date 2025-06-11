@@ -16,21 +16,20 @@ public class AsymmetricKeyPair {
     // todo - think of which encrypting/decrypting algs to use
 
     // variables
-    private final PublicKey publicKey;
-    private final PrivateKey privateKey;
+    private PublicKey publicKey;
+    private PrivateKey privateKey;
     // end variables
 
     // Constructors
 
     // default one
-    public AsymmetricKeyPair() throws NoSuchAlgorithmException{
+    public AsymmetricKeyPair(){
         KeyPairGenerator kp_gen;
         try {
             kp_gen = KeyPairGenerator.getInstance("RSA");
         } catch (NoSuchAlgorithmException e) {
             Logger.log("KP_gen.getInstance(), noSuchAlgorithm Exception! Fix code!", LogLevel.WARN);
-            throw e;
-            // throwing so I know I don't work with useless object
+            return;
         }
         KeyPair keyPair = kp_gen.generateKeyPair();
         publicKey = keyPair.getPublic();
@@ -44,10 +43,9 @@ public class AsymmetricKeyPair {
     }
 
     // when you have a public key encoded to a string
-    public AsymmetricKeyPair(String publicKey_string) throws NoSuchAlgorithmException, InvalidKeySpecException{
+    public AsymmetricKeyPair(String publicKey_string) throws InvalidKeySpecException {
         privateKey = null;
 
-        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(publicKey_string));
 
         KeyFactory keyFactory;
         try {
@@ -55,13 +53,15 @@ public class AsymmetricKeyPair {
             keyFactory = KeyFactory.getInstance("RSA");
         } catch (NoSuchAlgorithmException e) {
             Logger.log("Check code! In AsymmetricKeyPair constructor KeyFactory.getInstance():" + e.getMessage(), LogLevel.WARN);
-            throw e;
+            return;
         }
 
+
+        EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(Base64.getDecoder().decode(publicKey_string));
         try {
             this.publicKey = keyFactory.generatePublic(publicKeySpec);
         } catch (InvalidKeySpecException e) {
-            Logger.log("Check code! In AsymmetricKeyPair constructor at keyFactory.generatePublic():" + e.getMessage(), LogLevel.WARN);
+            Logger.log("Invalid KeySpec for a public key", LogLevel.ERROR);
             throw e;
         }
 
