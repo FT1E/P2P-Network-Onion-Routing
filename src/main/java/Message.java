@@ -9,6 +9,7 @@ public class Message {
     protected String id;    // unique for all messages
     protected MessageMainType messageMainType;    // REQUEST/REPLY
     protected MessageSubType messageSubType;  // CHAT, ONION, ...
+    private String connection_id;
     protected String body;      // body of message
     // for ONION messages it has form: next_address connection_id inner_msg
 
@@ -16,7 +17,7 @@ public class Message {
     // constructors
 
     // General constructor for setting all fields
-    public Message(String id, MessageMainType messageMainType, MessageSubType messageSubType, String body) throws IOException{
+    public Message(String id, MessageMainType messageMainType, MessageSubType messageSubType, String connection_id, String body) throws IOException{
 
         // REPLY messages need to have the same id as the corresponding REQUEST
         if(messageMainType == MessageMainType.REPLY){
@@ -30,24 +31,18 @@ public class Message {
             this.id = UUID.randomUUID().toString();
         }
         this.messageMainType = messageMainType;
-
-        // ONION messages should be made with the OnionMessage class
-        if(messageSubType == MessageSubType.ONION){
-            Logger.log("ONION messages should be made with the OnionMessage constructor", LogLevel.ERROR);
-            throw new IOException();
-        }
-
         this.messageSubType = messageSubType;
+        this.connection_id = (connection_id == null ) ? UUID.randomUUID().toString() : connection_id;
         this.body = body;
     }
 
 
     // from a string - mainly when reading a raw string, to get a Message object
     public Message(String rawMessage) throws IOException{
-        String[] tokens = rawMessage.split(" ", 4);
+        String[] tokens = rawMessage.split(" ", 5);
 
         // not enough fields
-        if(tokens.length != 4){
+        if(tokens.length != 5){
             Logger.log("Message has way too few fields", LogLevel.ERROR);
             throw new IOException();
         }
@@ -55,29 +50,9 @@ public class Message {
         this.id = tokens[0];
         this.messageMainType = MessageMainType.valueOf(tokens[1]);
         this.messageSubType = MessageSubType.valueOf(tokens[2]);
-        this.body = tokens[3];
+        this.connection_id = tokens[3];
+        this.body = tokens[4];
     }
-
-    // for OnionMessage constructor
-    protected Message(String id, MessageMainType messageMainType) throws IOException{
-        if(messageMainType == MessageMainType.REPLY){
-            if(id == null) {
-                Logger.log("REPLY messages need to have the same id as the corresponding REQUEST message", LogLevel.WARN);
-                throw new IOException();
-            }
-            this.id = id;
-        }else{
-            // type == Type.REQUEST
-            this.id = UUID.randomUUID().toString();
-        }
-        this.messageMainType = messageMainType;
-        this.messageSubType = MessageSubType.ONION;
-    }
-
-
-    // I don't know why, but every constructor in inheriting class needs to call super
-    // and if super isn't called in the first line it's an error
-    protected Message(){}
 
     // - static methods for more easily creating messages - like createCHAT
 
@@ -88,7 +63,7 @@ public class Message {
 
     public static Message createCHAT_REQUEST(String body){
         try {
-            return new Message(null, MessageMainType.REQUEST, MessageSubType.CHAT, body);
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.CHAT, null, body);
         } catch (IOException e) {
             // redundant for this kind of messages
             return null;
@@ -97,7 +72,7 @@ public class Message {
 
     public static Message createCHAT_REPLY(String id){
         try {
-            return new Message(id, MessageMainType.REPLY, MessageSubType.CHAT, "Chat message successfully received");
+            return new Message(id, MessageMainType.REPLY, MessageSubType.CHAT, null, "Chat message successfully received");
         } catch (IOException e) {
             return null;
         }
@@ -107,7 +82,7 @@ public class Message {
     // PEER_DISCOVERY
     public static Message createPEER_DISCOVERY_REQUEST(){
         try {
-            return new Message(null, MessageMainType.REQUEST, MessageSubType.PEER_DISCOVERY, ".");
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.PEER_DISCOVERY, null,".");
         } catch (IOException e) {
             return null;
         }
@@ -120,7 +95,7 @@ public class Message {
         String addresses = PeerList.getAddressList(senderAddress);
 
         try {
-            return new Message(id, MessageMainType.REPLY, MessageSubType.PEER_DISCOVERY, addresses);
+            return new Message(id, MessageMainType.REPLY, MessageSubType.PEER_DISCOVERY, null, addresses);
         } catch (IOException e) {
             return null;
         }
@@ -133,7 +108,11 @@ public class Message {
     // REQUEST KEY_EXCHANGE contains a public key, with which the symmetric key in the REPLY is encrypted with
     public static Message createKEY_EXCHANGE_REQUEST(AsymmetricKeyPair keyPair){
         try {
-            return new Message(null, MessageMainType.REQUEST, MessageSubType.KEY_EXCHANGE, keyPair.encodePublicKey_toString());
+            Message message = new Message(null, MessageMainType.REQUEST, MessageSubType.KEY_EXCHANGE, null, keyPair.encodePublicKey_toString());
+            MessageHandling.addKeyPair(message.getId(), keyPair);
+            // storing the keyPair for when the REPLY is received
+            // one keyPair is used per one KEY_EXCHANGE request/reply messages
+            return message;
         } catch (IOException e) {
             // redundant
             return null;
@@ -141,10 +120,10 @@ public class Message {
     }
 
     // in REPLY KEY_EXCHANGE, the symmetric key is encrypted with the public key from the request
-    public static Message createKEY_EXCHANGE_REPLY(String id, AsymmetricKeyPair publicKey, SymmetricKey symmetricKey){
+    public static Message createKEY_EXCHANGE_REPLY(Message request, AsymmetricKeyPair publicKey, SymmetricKey symmetricKey){
         String body = publicKey.encryptPublic(symmetricKey.encodeKey_toString());
         try {
-            return new Message(id, MessageMainType.REPLY, MessageSubType.KEY_EXCHANGE, body);
+            return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.KEY_EXCHANGE, request.getConnection_id(), body);
         } catch (IOException e) {
             return null;
         }
@@ -161,7 +140,7 @@ public class Message {
 
     // toString conversion
     public String toString(){
-        return id + " " + messageMainType.name() + " " + messageSubType.name() + " " + body;
+        return id + " " + messageMainType.name() + " " + messageSubType.name() + " " + connection_id  + " " + body;
     }
 
 
@@ -170,17 +149,22 @@ public class Message {
         return id;
     }
 
-    public MessageMainType getType() {
+    public MessageMainType getMessageMainType() {
         return messageMainType;
     }
 
-    public MessageSubType getMessageType() {
+    public MessageSubType getMessageSubType() {
         return messageSubType;
     }
 
     public String getBody() {
         return body;
     }
+
+    public String getConnection_id() {
+        return connection_id;
+    }
+
     // end getters
 
 }

@@ -28,6 +28,12 @@ public class OnionConnection implements Runnable {
         this.n = Math.min(n, PeerList.getSize() - 1);
         final_address = final_dest;
     }
+
+    public OnionConnection(String final_dest){
+        // default number of in-between peers == 3
+        n = 3;
+        final_address = final_dest;
+    }
     // end Constructor
 
 
@@ -36,7 +42,6 @@ public class OnionConnection implements Runnable {
     public void run() {
         // todo
         //      - get keys
-
 
         connection_established = true;
     }
@@ -54,8 +59,8 @@ public class OnionConnection implements Runnable {
         }
 
         // todo
-        // encrypt message - using key corresponding with appropriate nextAddress and stuff
-        // send it
+        //  encrypt message - using key corresponding with appropriate nextAddress and stuff
+        //  send it
 
 
     }
