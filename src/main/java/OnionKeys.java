@@ -1,4 +1,7 @@
 import java.util.HashMap;
+import Keys.*;
+import Util.LogLevel;
+import Util.Logger;
 
 public class OnionKeys {
     // used for storing keys for onion connections where you're the middle man
@@ -21,6 +24,7 @@ public class OnionKeys {
     // Dictionary methods
     public synchronized static void add(String connection_id, SymmetricKey symKey){
         onionKeys.put(connection_id, symKey);
+        Logger.log("Stored a symmetric key with connection id:" + connection_id, LogLevel.SUCCESS);
     }
 
     public synchronized static SymmetricKey get(String connection_id){

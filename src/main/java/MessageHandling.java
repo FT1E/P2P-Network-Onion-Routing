@@ -1,3 +1,4 @@
+import Keys.*;
 import Util.LogLevel;
 import Util.Logger;
 
@@ -21,7 +22,7 @@ public class MessageHandling {
                 case CHAT -> handleCHAT_REQUEST(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REQUEST(message, sender);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
-                case ONION -> Logger.log("Todo");
+                case ONION -> handleONION_REQUEST(message);
             }
         }else if (!OnionConnectionList.checkReply(message)){
             // - check if REPLY needs to be processed by an ONION connection
@@ -148,7 +149,7 @@ public class MessageHandling {
         }
 
         //  - decrypt message with it
-        String decrypted_body = keyPair.decryptPrivate(message.getBody());
+        String decrypted_body = keyPair.decrypt(message.getBody());
         SymmetricKey symmetricKey = new SymmetricKey(decrypted_body);
 
         // todo - store the key in corresponding onion connection

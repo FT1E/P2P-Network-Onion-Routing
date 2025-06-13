@@ -1,3 +1,5 @@
+import Keys.AsymmetricKeyPair;
+import Keys.SymmetricKey;
 import Util.LogLevel;
 import Util.Logger;
 
@@ -108,7 +110,7 @@ public class Message {
     // REQUEST KEY_EXCHANGE contains a public key, with which the symmetric key in the REPLY is encrypted with
     public static Message createKEY_EXCHANGE_REQUEST(AsymmetricKeyPair keyPair){
         try {
-            Message message = new Message(null, MessageMainType.REQUEST, MessageSubType.KEY_EXCHANGE, null, keyPair.encodePublicKey_toString());
+            Message message = new Message(null, MessageMainType.REQUEST, MessageSubType.KEY_EXCHANGE, null, keyPair.encodePublicKey());
             MessageHandling.addKeyPair(message.getId(), keyPair);
             // storing the keyPair for when the REPLY is received
             // one keyPair is used per one KEY_EXCHANGE request/reply messages
@@ -124,7 +126,7 @@ public class Message {
 
     // in REPLY KEY_EXCHANGE, the symmetric key is encrypted with the public key from the request
     public static Message createKEY_EXCHANGE_REPLY(Message request, AsymmetricKeyPair publicKey, SymmetricKey symmetricKey){
-        String body = publicKey.encryptPublic(symmetricKey.encodeKey_toString());
+        String body = publicKey.encrypt(symmetricKey.encodeToString());
         try {
             return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.KEY_EXCHANGE, request.getConnection_id(), body);
         } catch (IOException e) {

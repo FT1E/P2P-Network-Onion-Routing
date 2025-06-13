@@ -34,5 +34,23 @@ public class Main {
         //      - api for it
 
         Logger.log("Current address list:" + PeerList.getAddressList(""), LogLevel.DEBUG);
+
+        if (!System.getenv("PEER_ID").equals("peer1")) {
+            return;
+        }
+
+        // testing for debug
+        Logger.log("Creating OC object in main", LogLevel.DEBUG);
+        OnionConnection oc = new OnionConnection(PeerList.getPeer(0).getAddress());
+        new Thread(oc).start();
+
+        while(!oc.isConnection_established()){
+            Logger.log("Waiting for OC to establish connection ...", LogLevel.DEBUG);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
+            }
+        }
     }
 }

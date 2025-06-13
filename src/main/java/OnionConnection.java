@@ -1,7 +1,9 @@
 import Util.LogLevel;
 import Util.Logger;
+import Keys.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -38,12 +40,20 @@ public class OnionConnection implements Runnable {
         // or using the final destination as an in-between node
         this.n = Math.min(n, PeerList.getSize() - 1);
         final_address = final_dest;
+
+        this.symmetricKeys = new SymmetricKey[n];
+        this.addresses = new String[n];
+        this.connection_ids = new String[n];
     }
 
     public OnionConnection(String final_dest){
         // default number of in-between peers == 3
         n = 3;
         final_address = final_dest;
+
+        this.symmetricKeys = new SymmetricKey[n];
+        this.addresses = new String[n];
+        this.connection_ids = new String[n];
     }
     // end Constructors
 
@@ -59,7 +69,8 @@ public class OnionConnection implements Runnable {
 
         Thread.currentThread().setName("OnionConnection[" + final_address + "]");
 
-        addresses = PeerList.getAddressArrayList(final_address).subList(0, n).toArray(addresses);
+        ArrayList<String> temp = new ArrayList<>(PeerList.getAddressArrayList(final_address).subList(0, n));
+        addresses = temp.toArray(new String[0]);
 
         // 1 - get keys
         Message message;
