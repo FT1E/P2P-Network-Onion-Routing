@@ -6,11 +6,11 @@ import java.util.UUID;
 
 public class Message {
 
-    protected String id;    // unique for all messages
-    protected MessageMainType messageMainType;    // REQUEST/REPLY
-    protected MessageSubType messageSubType;  // CHAT, ONION, ...
+    private String id;    // unique for all messages
+    private MessageMainType messageMainType;    // REQUEST/REPLY
+    private MessageSubType messageSubType;  // CHAT, ONION, ...
     private String connection_id;
-    protected String body;      // body of message
+    private String body;      // body of message
     // for ONION messages it has form: next_address connection_id inner_msg
 
 
@@ -118,6 +118,9 @@ public class Message {
             return null;
         }
     }
+    public static Message createKEY_EXCHANGE_REQUEST(){
+        return createKEY_EXCHANGE_REQUEST(new AsymmetricKeyPair());
+    }
 
     // in REPLY KEY_EXCHANGE, the symmetric key is encrypted with the public key from the request
     public static Message createKEY_EXCHANGE_REPLY(Message request, AsymmetricKeyPair publicKey, SymmetricKey symmetricKey){
@@ -130,9 +133,25 @@ public class Message {
     }
     // end KEY_EXCHANGE
 
+    // ONION
+    public static Message createONION_REQUEST(String connection_id, String body){
+        // body is already encrypted with key corresponding to connection_id
+        try {
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.ONION, connection_id, body);
+        } catch (IOException e) {
+            // redundant
+            return null;
+        }
+    }
 
-    // NOTE - ONION is done in a separate class, inheriting message
-
+    public static Message createONION_REPLY(Message request, String body){
+        try {
+            return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.ONION, request.getConnection_id(), body);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+    // end ONION
 
 
     // end constructors

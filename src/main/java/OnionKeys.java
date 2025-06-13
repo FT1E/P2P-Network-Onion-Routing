@@ -23,8 +23,8 @@ public class OnionKeys {
         onionKeys.put(connection_id, symKey);
     }
 
-    public synchronized static void get(String connection_id){
-        onionKeys.get(connection_id);
+    public synchronized static SymmetricKey get(String connection_id){
+        return onionKeys.get(connection_id);
     }
 
     public synchronized static boolean remove(String connection_id){

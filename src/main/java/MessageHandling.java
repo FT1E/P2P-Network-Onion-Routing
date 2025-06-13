@@ -1,6 +1,7 @@
 import Util.LogLevel;
 import Util.Logger;
 
+import java.io.IOException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 
@@ -22,7 +23,10 @@ public class MessageHandling {
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
                 case ONION -> Logger.log("Todo");
             }
-        }else{
+        }else if (!OnionConnectionList.checkReply(message)){
+            // - check if REPLY needs to be processed by an ONION connection
+
+            // in here only if message doesn't need to be processed by some OnionConnection
             switch (message.getMessageSubType()){
                 case CHAT -> handleCHAT_REPLY(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REPLY(message);
@@ -63,15 +67,45 @@ public class MessageHandling {
 
         sender.sendMessage(Message.createKEY_EXCHANGE_REPLY(message, publicKey, symmetricKey));
     }
-    // todo - ONION
+
+    // - ONION
     private static void handleONION_REQUEST(Message message){
-        // todo:
-        //      - getConnectionId
-        //      - get corresponding key - if none just send back a REPLY unknown or something
-        //      - decrypt to get inner message which should have body == "<nextAddress> <msg.toString()>"
-        //      - send it to next
-        //      - save the request id of both outer and inner message
-        //      - save a runnable or something which is started when REPLY of the inner message is received
+        //  - getConnectionId
+        //  - get corresponding key - if none just send back a REPLY unknown or something
+        SymmetricKey symmetricKey = OnionKeys.get(message.getConnection_id());
+
+        if(symmetricKey == null){
+            // no point in doing anything if you don't have the key
+            Logger.log("Received a REQUEST ONION, but no corresponding key stored", LogLevel.WARN);
+            return;
+        }
+
+        //  - decrypt to get inner message which should have body == "<nextAddress> <msg.toString()>"
+        String decrypted_body = symmetricKey.decrypt(message.getBody());
+        String[] tokens = decrypted_body.split(" ", 2);
+        String nextAddress = tokens[0];
+        Message innerMessage;
+        try {
+            innerMessage = new Message(tokens[1]);
+        } catch (IOException e) {
+            Logger.log("Invalid inner message in REQUEST ONION");
+            return;
+        }
+
+        //  - get next peer
+        Peer peer = PeerList.getPeer(nextAddress);
+        if (peer == null){
+            Logger.log("Not connected to nextAddress == [" + nextAddress + "]", LogLevel.WARN);
+            return;
+        }
+
+        // todo
+        //  - save the request id of both outer and inner message
+        //  - save a runnable or something which is started when REPLY of the inner message is received
+
+        //  - send it to next
+        peer.sendMessage(innerMessage);
+
     }
 
     // end REQUEST Handlers
@@ -98,7 +132,7 @@ public class MessageHandling {
     }
 
     // todo - KEY_EXCHANGE
-    private static void handleKEY_EXCHANGE_REPLY(Message message){
+    public static SymmetricKey handleKEY_EXCHANGE_REPLY(Message message){
         // todo:
         //  - get corresponding private key
         //  - decrypt message with it
@@ -110,7 +144,7 @@ public class MessageHandling {
         if(keyPair == null){
             // if you don't have the corresponding private key you can't decrypt the message, so yeah
             Logger.log("REPLY KEY_EXCHANGE received, but no corresponding keyPair stored!", LogLevel.WARN);
-            return;
+            return null;
         }
 
         //  - decrypt message with it
@@ -118,6 +152,7 @@ public class MessageHandling {
         SymmetricKey symmetricKey = new SymmetricKey(decrypted_body);
 
         // todo - store the key in corresponding onion connection
+        return symmetricKey;
 
     }
 
@@ -132,16 +167,13 @@ public class MessageHandling {
     private static void handleONION_REPLY(Message message){
         // todo:
         //  - get msg id
-        //  - see if you're the original sender or a middle man based on it
+        //  - see if you're the original sender or a middle man based on it - done in handle method
+        //  - if you're here, then you're a middle man
 
 
         // todo:
         //      - 1 - middle man - encrypt with the corresponding key and send it back
 
-
-        // todo:
-        //      - 2 - original sender - decrypt with the corresponding keys in corresponding order
-        //      - then process the inner most message
     }
 
     // end REPLY Handlers
