@@ -87,7 +87,7 @@ public class OnionConnection implements Runnable {
                 message = Message.createONION_REQUEST(connection_ids[j-1], encrypted_body);
             }
 
-            OnionConnectionList.addRequest(message.getId(), this);
+            MyOnionConnectionList.addRequest(message.getId(), this);
             // send message to peer[address[0]]
             PeerList.getPeer(addresses[0]).sendMessage(message);
 
@@ -133,6 +133,8 @@ public class OnionConnection implements Runnable {
                 Logger.log("Error extracting message from queue", LogLevel.WARN);
                 continue;
             }
+            message = decrypt(message);
+            MessageHandling.handle(message, PeerList.getPeer(final_address));
         }
     }
 
@@ -157,11 +159,12 @@ public class OnionConnection implements Runnable {
         String encrypted_body = symmetricKeys[n-1].encrypt(final_address + " " + message.toString());
 
         message = Message.createONION_REQUEST(connection_ids[n-1], encrypted_body);
-        for (int i = n-1; i > 0; i++) {
+        for (int i = n-1; i > 0; i--) {
             encrypted_body = symmetricKeys[i-1].encrypt(addresses[i] + " " + message.toString());
             message = Message.createONION_REQUEST(connection_ids[i-1], encrypted_body);
         }
 
+        MyOnionConnectionList.addRequest(message.getId(), this);
         PeerList.getPeer(addresses[0]).sendMessage(message);
     }
 

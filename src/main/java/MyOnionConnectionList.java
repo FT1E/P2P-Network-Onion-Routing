@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class OnionConnectionList {
+public class MyOnionConnectionList {
     
     
     // todo - efficient synchronization

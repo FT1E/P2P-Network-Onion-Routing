@@ -23,10 +23,12 @@ public class Main {
         }
 
 
-        try {
-            Thread.sleep(1500);
-        } catch (InterruptedException e) {
-            Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
+        while(PeerList.getSize() < 4) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
+            }
         }
 
         // todo
@@ -45,12 +47,14 @@ public class Main {
         new Thread(oc).start();
 
         while(!oc.isConnection_established()){
-            Logger.log("Waiting for OC to establish connection ...", LogLevel.DEBUG);
+//            Logger.log("Waiting for OC to establish connection ...", LogLevel.DEBUG);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
             }
         }
+
+        oc.sendMessage(Message.createCHAT_REQUEST("Secret message from someone on the other side!"));
     }
 }

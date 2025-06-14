@@ -14,6 +14,9 @@ public class MessageHandling {
     // dictionary for key_exchange requests
     private static HashMap<String, AsymmetricKeyPair> key_exchange_map = new HashMap<>();
 
+    // when you receive a REPLY whether you should process it as a normal REPLY
+    // or if you need to wrap it in encryption and send it back
+    private static HashMap<String, OnionHandler> onionRequests = new HashMap<>();
 
 
     public static void handle(Message message, Peer sender){
@@ -22,17 +25,18 @@ public class MessageHandling {
                 case CHAT -> handleCHAT_REQUEST(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REQUEST(message, sender);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
-                case ONION -> handleONION_REQUEST(message);
+                case ONION -> handleONION_REQUEST(message, sender);
             }
-        }else if (!OnionConnectionList.checkReply(message)){
+        }else if (!MyOnionConnectionList.checkReply(message) && !OnionHandlerWaiting(message)){
             // - check if REPLY needs to be processed by an ONION connection
+            // - or if it needs to wrapped in REPLY ONION
 
-            // in here only if message doesn't need to be processed by some OnionConnection
+            // in here only if message doesn't need to be processed by some OnionConnection or OnionHandler
             switch (message.getMessageSubType()){
                 case CHAT -> handleCHAT_REPLY(message, sender);
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REPLY(message);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REPLY(message);
-                case ONION -> Logger.log("Todo");
+                case ONION -> handleONION_REPLY(message);
             }
         }
     }
@@ -70,7 +74,7 @@ public class MessageHandling {
     }
 
     // - ONION
-    private static void handleONION_REQUEST(Message message){
+    private static void handleONION_REQUEST(Message message, Peer requester){
         //  - getConnectionId
         //  - get corresponding key - if none just send back a REPLY unknown or something
         SymmetricKey symmetricKey = OnionKeys.get(message.getConnection_id());
@@ -100,9 +104,10 @@ public class MessageHandling {
             return;
         }
 
-        // todo
-        //  - save the request id of both outer and inner message
         //  - save a runnable or something which is started when REPLY of the inner message is received
+        OnionHandler onionHandler = new OnionHandler(message, requester, symmetricKey);
+
+        onionRequests.put(innerMessage.getId(), onionHandler);
 
         //  - send it to next
         peer.sendMessage(innerMessage);
@@ -164,17 +169,32 @@ public class MessageHandling {
     }
     // end - KEY_EXCHANGE
 
-    // todo - ONION
+    // - ONION
     private static void handleONION_REPLY(Message message){
-        // todo:
-        //  - get msg id
-        //  - see if you're the original sender or a middle man based on it - done in handle method
         //  - if you're here, then you're a middle man
+        //  - 1 - middle man - encrypt with the corresponding key and send it back
 
+        OnionHandler onionHandler = onionRequests.remove(message.getId());
+        if (onionHandler != null){
+            onionHandler.init(message);
+            onionHandler.run();
+        }
+    }
 
-        // todo:
-        //      - 1 - middle man - encrypt with the corresponding key and send it back
-
+    // handling for a REPLY
+    // which needs to be wrapped in a REPLY ONION
+    // this is for the last node before the final destination
+    // he sends a normal message
+    // the final destination peer thinks of it as normal message
+    // so when the last node receives a REPLY it should somehow know that it needs to wrap it and send it back
+    private static boolean OnionHandlerWaiting(Message replyMessage){
+        OnionHandler onionHandler = onionRequests.remove(replyMessage.getId());
+        if(onionHandler == null){
+            return false;
+        }
+        onionHandler.init(replyMessage);
+        onionHandler.run();
+        return true;
     }
 
     // end REPLY Handlers
