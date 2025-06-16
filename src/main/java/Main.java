@@ -2,6 +2,7 @@ import Util.LogLevel;
 import Util.Logger;
 
 import java.io.IOException;
+import java.util.Random;
 
 public class Main {
     public static void main(String[] args) {
@@ -34,17 +35,25 @@ public class Main {
         // todo
         //      - start sending messages
         //      - api for it
+        //      - modify main a bit so that a server is only started once - ex. if someone runs Main again only the interface for sending messages is available
+
+        if(System.getenv("MANUAL") != null){
+            new Thread(new QueryHandler()).start();
+//            return;
+        }
+
 
         Logger.log("Current address list:" + PeerList.getAddressList(""), LogLevel.DEBUG);
 
-        if (!System.getenv("PEER_ID").equals("peer1")) {
-            return;
-        }
+//        if (!System.getenv("PEER_ID").equals("peer1")) {
+//            return;
+//        }
 
         // testing for debug
-        Logger.log("Creating OC object in main", LogLevel.DEBUG);
-        OnionConnection oc = new OnionConnection(PeerList.getPeer(0).getAddress());
-        new Thread(oc).start();
+//        Logger.log("Creating OC object in main", LogLevel.DEBUG);
+        String randomAddress = PeerList.getAddressArrayList("").get(new Random().nextInt(4));
+        OnionConnection oc = new OnionConnection(randomAddress);
+//        new Thread(oc).start();
 
         while(!oc.isConnection_established()){
 //            Logger.log("Waiting for OC to establish connection ...", LogLevel.DEBUG);
@@ -55,6 +64,9 @@ public class Main {
             }
         }
 
-        oc.sendMessage(Message.createCHAT_REQUEST("Secret message from someone on the other side!"));
+        oc.sendMessage(Message.createCHAT_REQUEST("Secret message from " + System.getenv("PEER_ID") + " on the other side!"));
+
+
+
     }
 }

@@ -99,7 +99,7 @@ public class Peer implements Runnable {
     public void run() {
         // just read messages and process them
 
-
+        Thread.currentThread().setName("Peer[" + getAddress() + "]");
 
         String rawMessage;
         Message message;
@@ -111,7 +111,10 @@ public class Peer implements Runnable {
                 break;
             }
 
-            Logger.log("[" + getAddress() + "]:" + rawMessage, LogLevel.DEBUG);
+            // - if track mode is on - print every message received (another query command TRACK ON/OFF + a variable in Constants)
+            if(Constants.getTrack()){
+                Logger.log("[" + getAddress() + "]:" + rawMessage, LogLevel.DEBUG);
+            }
 
             try {
                 message = new Message(rawMessage);

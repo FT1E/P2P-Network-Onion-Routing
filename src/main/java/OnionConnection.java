@@ -12,16 +12,7 @@ public class OnionConnection implements Runnable {
 
     // its run method is a protocol for establishing keys between you and the in-between nodes
 
-
-    // todo - can randomly use 3 in-between nodes for which you exchanged keys with
-    //      - less overhead of connection establishment, although this is the most secure way to exchange keys
-    //          i.e.
-    //          A -> B; (no encryption) - get B key
-    //          then A -> B -> C; (A->B encrypted with B key) - get C key
-    //          A -> B -> C -> D; (A->B encrypted with B key, B->C encrypted with C key) - get D key
-    //          - in REPLY keys are encrypted with A's public key
-    //          - also can be scaled to n keys, as long as there are enough peers
-
+    // todo - maybe a diff blocking queue?
 
     private LinkedBlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
     // put in at MessageHandling if message.getId() is present in
@@ -54,6 +45,8 @@ public class OnionConnection implements Runnable {
         this.symmetricKeys = new SymmetricKey[n];
         this.addresses = new String[n];
         this.connection_ids = new String[n];
+
+        MyOnionConnectionList.add(this);
     }
     // end Constructors
 
@@ -122,6 +115,8 @@ public class OnionConnection implements Runnable {
             }
 
         }
+
+//        MyOnionConnectionList.add(this);
         connection_established = true;
         Logger.log("Successfully established OnionConnection with in-between addresses:" + Arrays.toString(addresses) + "; and final address " + final_address, LogLevel.SUCCESS);
 
@@ -150,21 +145,18 @@ public class OnionConnection implements Runnable {
             return;
         }
 
-        // todo
         //  encrypt message - using key corresponding with appropriate nextAddress and stuff
-        //  save message id in OnionConnectionList, so that when REPLY is received
-        //  it is added to this OC's message queue
-        //  send it
-
         String encrypted_body = symmetricKeys[n-1].encrypt(final_address + " " + message.toString());
-
         message = Message.createONION_REQUEST(connection_ids[n-1], encrypted_body);
         for (int i = n-1; i > 0; i--) {
             encrypted_body = symmetricKeys[i-1].encrypt(addresses[i] + " " + message.toString());
             message = Message.createONION_REQUEST(connection_ids[i-1], encrypted_body);
         }
 
+        //  save message id in OnionConnectionList, so that when REPLY is received
+        //  it is added to this OC's message queue
         MyOnionConnectionList.addRequest(message.getId(), this);
+        //  send it
         PeerList.getPeer(addresses[0]).sendMessage(message);
     }
 
@@ -188,4 +180,17 @@ public class OnionConnection implements Runnable {
     public void addMessage(Message message){
         messageQueue.add(message);
     }
+
+
+    // getters
+
+    public String[] getMiddleNodes() {
+        return addresses;
+    }
+
+    public String getFinalAddress() {
+        return final_address;
+    }
+
+    // end getters
 }

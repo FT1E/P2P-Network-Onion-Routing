@@ -74,7 +74,7 @@ public class Message {
 
     public static Message createCHAT_REPLY(String id){
         try {
-            return new Message(id, MessageMainType.REPLY, MessageSubType.CHAT, null, "Chat message successfully received");
+            return new Message(id, MessageMainType.REPLY, MessageSubType.CHAT, null, "Chat message successfully received by " + System.getenv("PEER_ID"));
         } catch (IOException e) {
             return null;
         }

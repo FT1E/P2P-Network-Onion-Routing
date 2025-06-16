@@ -1,4 +1,6 @@
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+
 import Keys.*;
 import Util.LogLevel;
 import Util.Logger;
@@ -10,8 +12,7 @@ public class OnionKeys {
     // acting like a dictionary of the decribed keys
 
 
-    // todo - efficient way to synchronize
-    private static HashMap<String, SymmetricKey> onionKeys = new HashMap<>();
+    private static ConcurrentHashMap<String, SymmetricKey> onionKeys = new ConcurrentHashMap<>();
     // key == connection_id
     // value == symmetric key associated with that connection
 
@@ -22,16 +23,16 @@ public class OnionKeys {
 
 
     // Dictionary methods
-    public synchronized static void add(String connection_id, SymmetricKey symKey){
+    public static void add(String connection_id, SymmetricKey symKey){
         onionKeys.put(connection_id, symKey);
         Logger.log("Stored a symmetric key with connection id:" + connection_id, LogLevel.SUCCESS);
     }
 
-    public synchronized static SymmetricKey get(String connection_id){
+    public static SymmetricKey get(String connection_id){
         return onionKeys.get(connection_id);
     }
 
-    public synchronized static boolean remove(String connection_id){
+    public static boolean remove(String connection_id){
         return (onionKeys.remove(connection_id) == null);
     }
 

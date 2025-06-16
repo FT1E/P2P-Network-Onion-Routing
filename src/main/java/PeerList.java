@@ -1,6 +1,8 @@
 import Util.Logger;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -10,12 +12,14 @@ public class PeerList {
 
     // functionalities:
     //  - addPeer
-    //  - removePeer (can be done by the peer object itself)
-    //  - getPeer - based on index or peer address
+    //  - removePeer (done by the peer object itself)
+    //  - getPeer - based on peer address
 
 
-    // array list of peer objects
-    private static ArrayList<Peer> peerList = new ArrayList<>();
+    // HashMap of peers
+    // key   == peer address
+    // value == peer object
+    private static ConcurrentHashMap<String, Peer> peerMap = new ConcurrentHashMap<>();
 
     // thread pool for peer runnables - reading messages
     private static ExecutorService threadPool = Executors.newCachedThreadPool();
@@ -24,66 +28,45 @@ public class PeerList {
     // todo - think of how to more efficiently achieve synchronization
 
 
-    // add 1
-    public synchronized static void addPeer(Peer peer) {
-        // - add to list
 
-        for (int i = 0; i < peerList.size(); i++) {
-            if(peerList.get(i).getAddress().equals(peer.getAddress())){
-                Logger.log("Already connected to peer [" + peer.getAddress() + "], closing connection!");
-                peer.disconnect();
-                return;
-            }
+    // Dictionary methods
+
+    // get by address
+    public static Peer getPeer(String address){
+        return peerMap.get(address);
+    }
+
+    // add
+    public static boolean addPeer(Peer peer){
+        if(peerMap.containsKey(peer.getAddress())){
+            return false;
         }
+        peerMap.put(peer.getAddress(), peer);
 
-        Logger.log("New peer!");
-        peerList.add(peer);
-        // - submit to thread pool
+        Logger.log("New peer added! Address: " + peer.getAddress());
+        // - submit to thread pool - so it can read and process messages from the peer
         threadPool.submit(peer);
+        return true;
     }
 
     // remove
-    public synchronized static void removePeer(Peer peer){
-        // so to close a connection with peer just call its disconnect method
-
-        //  - close connection with peer - done in Peer.disconnect which calls this method
-        //  - remove it from the list
-        peerList.remove(peer);
+    public static boolean removePeer(Peer peer){
+        return (peerMap.remove(peer.getAddress()) != null);
     }
+    // end Dictionary methods
 
-    // get a peer object
-    // based on index
-    public synchronized static Peer getPeer(int i){
-        return peerList.get(i);
-    }
-
-    // based on address
-    public synchronized static Peer getPeer(String address){
-        for (int i = 0; i < peerList.size(); i++) {
-            if (peerList.get(i).getAddress().equals(address)){
-                return peerList.get(i);
-            }
-        }
-        return null;
-    }
-
-    // end get a peer object
 
 
     // getAddresses
     // get a list of all addresses excluding one
     // used for PEER_DISCOVERY
+    public synchronized static ArrayList<String> getAddressArrayList(String excludeAddr){
+        ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
+        addresses.remove(excludeAddr);
+        return addresses;
+    }
     public static String[] getAddressArray(String excludeAddr){
         return getAddressArrayList(excludeAddr).toArray(new String[0]);
-    }
-
-    public synchronized static ArrayList<String> getAddressArrayList(String excludeAddr){
-        ArrayList<String> addresses = new ArrayList<>(peerList.size() - 1);
-        for (int i=0; i<peerList.size(); i++){
-            if (peerList.get(i).getAddress().equals(excludeAddr)) continue;
-            addresses.add(peerList.get(i).getAddress());
-        }
-        return addresses;
     }
 
     // returns one string joined by ";"
@@ -96,8 +79,9 @@ public class PeerList {
 
     // getSize
     public static int getSize(){
-        return peerList.size();
+        return peerMap.size();
     }
+
 
 
 }

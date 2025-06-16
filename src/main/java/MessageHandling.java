@@ -137,9 +137,8 @@ public class MessageHandling {
         }
     }
 
-    // todo - KEY_EXCHANGE
+    // - KEY_EXCHANGE
     public static SymmetricKey handleKEY_EXCHANGE_REPLY(Message message){
-        // todo:
         //  - get corresponding private key
         //  - decrypt message with it
         //  - store the key in corresponding onion connection

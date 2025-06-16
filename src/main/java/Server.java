@@ -20,6 +20,8 @@ public class Server implements Runnable {
     @Override
     public void run() {
 
+        Thread.currentThread().setName("Server");
+
         // create a server socket
         try{
             server = new ServerSocket(port);
@@ -44,7 +46,6 @@ public class Server implements Runnable {
                 continue;
             }
 
-            // todo:
             //  - create a new client - every client adds itself to peerlist in its constructor if no error occured
             new Peer(socket);
 
