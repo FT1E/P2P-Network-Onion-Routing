@@ -48,7 +48,7 @@ public class Peer implements Runnable {
 
         // try to create socket
         try {
-            this.socket = new Socket(address, Constants.getSERVER_PORT());
+            this.socket = new Socket(address, Global.getSERVER_PORT());
         } catch (IOException e) {
             Logger.log("Error in trying to connect to: " + address, LogLevel.ERROR);
             return;
@@ -72,7 +72,7 @@ public class Peer implements Runnable {
     // SEND message method
     public boolean sendMessage(Message message){
         try {
-            //Logger.log("Sending message:" + message.toString(), LogLevel.DEBUG);
+//            Logger.log("Sending message:" + message.toString(), LogLevel.DEBUG);
             writer.write(message.toString() + "\n");
             writer.flush();
             return true;
@@ -88,6 +88,7 @@ public class Peer implements Runnable {
         try {
             return reader.readLine();
         } catch (IOException e) {
+            Logger.log("Error in readMessage:" + e.getMessage(), LogLevel.ERROR);
             Logger.log("Error in reading message from peer [" + getAddress() + "]", LogLevel.ERROR);
             return null;
         }
@@ -111,8 +112,8 @@ public class Peer implements Runnable {
                 break;
             }
 
-            // - if track mode is on - print every message received (another query command TRACK ON/OFF + a variable in Constants)
-            if(Constants.getTrack()){
+            // - if track mode is on - print every message received (another query command TRACK ON/OFF + a variable in Global)
+            if(Global.getTrack()){
                 Logger.log("[" + getAddress() + "]:" + rawMessage, LogLevel.DEBUG);
             }
 
@@ -128,18 +129,20 @@ public class Peer implements Runnable {
         }
 
         // - close connection without infinite recursion
-        disconnect();
+        disconnect(false);
     }
 
 
     // disconnect
     // method for closing connection
-    public boolean disconnect(){
+    public boolean disconnect(boolean duplicate){
 
         String address = getAddress();
 
         try {
-            PeerList.removePeer(this);
+            if(!duplicate) {
+                PeerList.removePeer(this);
+            }
             socket.close();
             writer.close();
             reader.close();

@@ -84,6 +84,7 @@ public class QueryHandler implements Runnable{
             case "DSEND" -> handleDSend(input, addresses);
             case "OSEND" -> handleOSend(input, addresses, onionConnections);
             case "TRACK" -> handleTrack(tokens);
+            case "CREATE" -> handleCreate(tokens[1]);
             default -> {
                 Logger.log("Unknown command!", LogLevel.WARN);
                 return;
@@ -141,9 +142,7 @@ public class QueryHandler implements Runnable{
         Message message = null;
         switch (messageSubType){
             case CHAT -> message = Message.createCHAT(tokens[3]);
-            // todo
-            //      - 1 more type of message
-            //      - maybe also let them to use PEER_DISCOVERY
+            case GET_VAR -> message = Message.createGET_VARIABLE_REQUEST(tokens[3]);
             default -> {
                 Logger.log("Invalid message type used in query:" + messageSubType.name());
                 return;
@@ -221,9 +220,7 @@ public class QueryHandler implements Runnable{
         Message message = null;
         switch (messageSubType){
             case CHAT -> message = Message.createCHAT(tokens[4]);
-            // todo
-            //      - 1 more type of message
-            //      - maybe also let them to use PEER_DISCOVERY
+            case GET_VAR -> message = Message.createGET_VARIABLE_REQUEST(tokens[4]);
             default -> {
                 Logger.log("Invalid message type used in query:" + messageSubType.name());
                 return;
@@ -251,13 +248,23 @@ public class QueryHandler implements Runnable{
             return;
         }
         switch (tokens[1].toUpperCase()){
-            case "ON" -> Constants.setTrack(true);
-            case "OFF" -> Constants.setTrack(false);
+            case "ON" -> Global.setTrack(true);
+            case "OFF" -> Global.setTrack(false);
             default -> Logger.log("TRACK argument should be either ON/OFF", LogLevel.WARN);
         }
     }
     // end TRACK
 
+    // - CREATE
+    private void handleCreate(String args){
+        String[] tokens = args.split(" ", 2);
+        if (tokens.length < 2){
+            Logger.log("Query has too few arguments!", LogLevel.WARN);
+            return;
+        }
+        Global.addVariable(tokens[0], tokens[1]);
+    }
+    // end CREATE
 
     // end Input processing methods
 }

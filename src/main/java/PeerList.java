@@ -1,3 +1,4 @@
+import Util.LogLevel;
 import Util.Logger;
 
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ public class PeerList {
     private static ExecutorService threadPool = Executors.newCachedThreadPool();
 
 
-    // todo - think of how to more efficiently achieve synchronization
 
 
 
@@ -37,11 +37,19 @@ public class PeerList {
     }
 
     // add
-    public static boolean addPeer(Peer peer){
-        if(peerMap.containsKey(peer.getAddress())){
+    public synchronized static boolean addPeer(Peer peer){
+        if(peer.getAddress().equals("127.0.0.1")){
+            Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
+            peer.disconnect(true);
             return false;
         }
-        peerMap.put(peer.getAddress(), peer);
+
+        if(peerMap.putIfAbsent(peer.getAddress(), peer) != null){
+            Logger.log("Duplicate connection with " + peer.getAddress(), LogLevel.DEBUG);
+            peer.disconnect(true);
+            return false;
+        }
+
 
         Logger.log("New peer added! Address: " + peer.getAddress());
         // - submit to thread pool - so it can read and process messages from the peer
@@ -51,6 +59,7 @@ public class PeerList {
 
     // remove
     public static boolean removePeer(Peer peer){
+//        Logger.log("AddressList before removing peer:" + getAddressList("."));
         return (peerMap.remove(peer.getAddress()) != null);
     }
     // end Dictionary methods

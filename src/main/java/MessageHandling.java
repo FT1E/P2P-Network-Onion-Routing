@@ -26,6 +26,7 @@ public class MessageHandling {
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REQUEST(message, sender);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
                 case ONION -> handleONION_REQUEST(message, sender);
+                case GET_VAR -> handleGET_VARIABLE_REQUEST(message, sender);
             }
         }else if (!MyOnionConnectionList.checkReply(message) && !OnionHandlerWaiting(message)){
             // - check if REPLY needs to be processed by an ONION connection
@@ -37,6 +38,7 @@ public class MessageHandling {
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REPLY(message);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REPLY(message);
                 case ONION -> handleONION_REPLY(message);
+                case GET_VAR -> handleGET_VARIABLE_REPLY(message, sender);
             }
         }
     }
@@ -87,6 +89,9 @@ public class MessageHandling {
 
         //  - decrypt to get inner message which should have body == "<nextAddress> <msg.toString()>"
         String decrypted_body = symmetricKey.decrypt(message.getBody());
+
+//        Logger.log("Decrypted body: " + decrypted_body, LogLevel.DEBUG);
+
         String[] tokens = decrypted_body.split(" ", 2);
         String nextAddress = tokens[0];
         Message innerMessage;
@@ -114,6 +119,12 @@ public class MessageHandling {
 
     }
 
+
+    // GET_VARIABLE
+    private static void handleGET_VARIABLE_REQUEST(Message request, Peer sender){
+        sender.sendMessage(Message.createGET_VARIABLE_REPLY(request));
+    }
+
     // end REQUEST Handlers
 
     // REPLY Handlers
@@ -125,9 +136,6 @@ public class MessageHandling {
 
     // - PEER_DISCOVERY
     private static void handlePEER_DISCOVERY_REPLY(Message message){
-        //  todo - maybe a better implementation
-        //   - if both lists are sorted - merging like in merge sort might be good
-
 
         String[] addresses = message.getBody().split(";");
         //  - try to connect to every peer in the list
@@ -156,7 +164,9 @@ public class MessageHandling {
         String decrypted_body = keyPair.decrypt(message.getBody());
         SymmetricKey symmetricKey = new SymmetricKey(decrypted_body);
 
-        // todo - store the key in corresponding onion connection
+        // - store the key in corresponding onion connection
+        // - this message corresponds to an Onion Connection in MyOnionConnectionList
+        // so when received it is added to that OC's queue, and it stores it in its own key array
         return symmetricKey;
 
     }
@@ -194,6 +204,11 @@ public class MessageHandling {
         onionHandler.init(replyMessage);
         onionHandler.run();
         return true;
+    }
+
+    // GET_VARIABLE
+    private static void handleGET_VARIABLE_REPLY(Message reply, Peer sender){
+        Logger.chat(sender.getAddress(), reply.getBody());
     }
 
     // end REPLY Handlers

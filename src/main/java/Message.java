@@ -156,6 +156,27 @@ public class Message {
     // end ONION
 
 
+    // GET_VARIABLE
+    public static Message createGET_VARIABLE_REQUEST(String variable_name){
+        try {
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.GET_VAR, null, variable_name);
+        } catch (IOException e) {
+            // redundant
+            return null;
+        }
+    }
+
+    public static Message createGET_VARIABLE_REPLY(Message request){
+        try {
+            String value = Global.getVariable(request.getBody());
+            String body = request.getBody() + ":" + (value != null ? value : "null");
+            return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.GET_VAR, null, body);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+    // end GET_VARIABLE
+
     // end constructors
 
 

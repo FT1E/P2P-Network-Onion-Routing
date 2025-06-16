@@ -1,15 +1,22 @@
 import Util.LogLevel;
 import Util.Logger;
 
-import java.io.IOException;
 import java.util.Random;
 
+
+// TODO: 16/06/2025
+//      - code clean up
 public class Main {
     public static void main(String[] args) {
 
         //  - start a server
-        new Thread(new Server(Constants.getSERVER_PORT())).start();
+        new Thread(new Server(Global.getSERVER_PORT())).start();
 
+        for (int i = 0; i < 10; i++) {
+            Global.addVariable("var" + i, "val" + i);
+        }
+
+        Global.setTrack(false);
 
         try {
             Thread.sleep(2000);
