@@ -40,13 +40,13 @@ public class PeerList {
     public synchronized static boolean addPeer(Peer peer){
         if(peer.getAddress().equals("127.0.0.1")){
             Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
-            peer.disconnect(true);
+            peer.disconnect();
             return false;
         }
 
         if(peerMap.putIfAbsent(peer.getAddress(), peer) != null){
             Logger.log("Duplicate connection with " + peer.getAddress(), LogLevel.DEBUG);
-            peer.disconnect(true);
+            peer.disconnect();
             return false;
         }
 
@@ -60,7 +60,7 @@ public class PeerList {
     // remove
     public static boolean removePeer(Peer peer){
 //        Logger.log("AddressList before removing peer:" + getAddressList("."));
-        return (peerMap.remove(peer.getAddress()) != null);
+        return peerMap.remove(peer.getAddress(), peer);
     }
     // end Dictionary methods
 
@@ -69,18 +69,26 @@ public class PeerList {
     // getAddresses
     // get a list of all addresses excluding one
     // used for PEER_DISCOVERY
-    public synchronized static ArrayList<String> getAddressArrayList(String excludeAddr){
+    private synchronized static ArrayList<String> getAddressArrayList(String excludeAddr, int n){
+
         ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
         addresses.remove(excludeAddr);
-        return addresses;
+
+        if(n < 0){
+            n = 0;
+        } else if(n > addresses.size()){
+            n = addresses.size();
+        }
+        Collections.shuffle(addresses);
+        return new ArrayList<>(addresses.subList(0, n));
     }
-    public static String[] getAddressArray(String excludeAddr){
-        return getAddressArrayList(excludeAddr).toArray(new String[0]);
+    public static String[] getAddressArray(String excludeAddr, int n){
+        return getAddressArrayList(excludeAddr, n).toArray(new String[0]);
     }
 
     // returns one string joined by ";"
-    public static String getAddressList(String excludeAddr){
-        String[] addresses = getAddressArray(excludeAddr);
+    public static String getAddressList(String excludeAddr, int n){
+        String[] addresses = getAddressArray(excludeAddr, n);
         return String.join(";", addresses);
     }
 

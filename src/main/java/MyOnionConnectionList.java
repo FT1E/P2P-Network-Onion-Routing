@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,13 +39,13 @@ public class MyOnionConnectionList {
         return list.size();
     }
 
-    public static OnionConnection[] getArray(){
+    public synchronized static OnionConnection[] getArray(){
         // returning a copy so that the original doesn't get affected if the return result of this does
         return list.toArray(new OnionConnection[0]);
     }
 
     // when you send out a REQUEST ONION message - when you receive a corresponding reply
-    // you can easilty know which OC needs to process it
+    // you can easily know which OC needs to process it
     public static void addRequest(String id, OnionConnection oc){
         onionRequests.put(id, oc);
     }
@@ -61,7 +60,7 @@ public class MyOnionConnectionList {
             return false;
         }
         // you're the original sender so pass on the processing to oc's message queue
-        oc.addMessage(message);
+        oc.addMessageToQueue(message);
         return true;
     }
 }

@@ -44,14 +44,14 @@ public class Peer implements Runnable {
 
     //  2 - from an address
     //  when you're trying to connect to someone
-    public Peer(String address){
+    public Peer(String address) throws IOException{
 
         // try to create socket
         try {
             this.socket = new Socket(address, Global.getSERVER_PORT());
         } catch (IOException e) {
             Logger.log("Error in trying to connect to: " + address, LogLevel.ERROR);
-            return;
+            throw e;
         }
         // socket successfully created at this point or crashed and returned
 
@@ -60,7 +60,7 @@ public class Peer implements Runnable {
             writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         } catch (IOException e) {
             Logger.log("Error in getting socket's input or output stream! Socket address:" + getAddress(), LogLevel.ERROR);
-            return;
+            throw e;
         }
 
         // peer adds itself to PeerList if no error happens
@@ -129,20 +129,18 @@ public class Peer implements Runnable {
         }
 
         // - close connection without infinite recursion
-        disconnect(false);
+        disconnect();
     }
 
 
     // disconnect
     // method for closing connection
-    public boolean disconnect(boolean duplicate){
+    public boolean disconnect(){
 
         String address = getAddress();
 
         try {
-            if(!duplicate) {
-                PeerList.removePeer(this);
-            }
+            PeerList.removePeer(this);
             socket.close();
             writer.close();
             reader.close();

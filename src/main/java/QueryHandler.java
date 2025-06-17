@@ -1,6 +1,7 @@
 import Util.LogLevel;
 import Util.Logger;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Scanner;
 
@@ -40,7 +41,7 @@ public class QueryHandler implements Runnable{
 
     // Peer List methods
     private String[] getPeerList(){
-        return PeerList.getAddressArray(".");
+        return PeerList.getAddressArray(".", PeerList.getSize());
     }
 
     private String formatPeerList(String[] peerList){
@@ -78,13 +79,17 @@ public class QueryHandler implements Runnable{
 
 
         String[] tokens = input.split(" ", 2);
+        if(tokens.length < 2){
+            Logger.log("Query has too few arguments!", LogLevel.WARN);
+        }
 
         // check command
         switch (tokens[0].toUpperCase()){
             case "DSEND" -> handleDSend(input, addresses);
             case "OSEND" -> handleOSend(input, addresses, onionConnections);
-            case "TRACK" -> handleTrack(tokens);
+            case "TRACK" -> handleTrack(tokens[1]);
             case "CREATE" -> handleCreate(tokens[1]);
+            case "CONNECT" -> handleConnect(tokens[1]);
             default -> {
                 Logger.log("Unknown command!", LogLevel.WARN);
                 return;
@@ -97,12 +102,13 @@ public class QueryHandler implements Runnable{
     // end processInput
 
 
+    // DSEND
     private void handleDSend(String input, String[] addresses){
 
         String[] tokens = input.split(" ", 4);
 
         if(tokens.length < 4){
-            Logger.log("Too few arguments in query!", LogLevel.WARN);
+            Logger.log("Query has too few arguments!", LogLevel.WARN);
             return;
         }
 
@@ -160,7 +166,7 @@ public class QueryHandler implements Runnable{
 
         String[] tokens = input.split(" ", 5);
         if(tokens.length < 5){
-            Logger.log("Too few arguments in query!", LogLevel.WARN);
+            Logger.log("Query has too few arguments!", LogLevel.WARN);
             return;
         }
 
@@ -189,7 +195,12 @@ public class QueryHandler implements Runnable{
                 Logger.log("No peer with given address!", LogLevel.WARN);
             }
 
-            oc = new OnionConnection(address);
+            try {
+                oc = new OnionConnection(address);
+            } catch (IOException e) {
+                // logger in constructor
+                return;
+            }
 
         }else if(tokens[1].equalsIgnoreCase("-o")){
 
@@ -242,12 +253,8 @@ public class QueryHandler implements Runnable{
     // end OSEND
 
     // - TRACK
-    private void handleTrack(String[] tokens){
-        if(tokens.length != 2) {
-            Logger.log("Only 1 argument needed for TRACK");
-            return;
-        }
-        switch (tokens[1].toUpperCase()){
+    private void handleTrack(String arg){
+        switch (arg.toUpperCase()){
             case "ON" -> Global.setTrack(true);
             case "OFF" -> Global.setTrack(false);
             default -> Logger.log("TRACK argument should be either ON/OFF", LogLevel.WARN);
@@ -265,6 +272,17 @@ public class QueryHandler implements Runnable{
         Global.addVariable(tokens[0], tokens[1]);
     }
     // end CREATE
+
+    // - CONNECT
+    private void handleConnect(String address){
+        try {
+            Peer peer = new Peer(address);
+            peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+        } catch (IOException e){
+            // logger in constructor
+        }
+    }
+    // end CONNECT
 
     // end Input processing methods
 }

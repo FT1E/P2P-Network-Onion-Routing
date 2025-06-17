@@ -4,7 +4,7 @@ import Util.Logger;
 public class OnionHandler implements Runnable{
 
 
-    private Peer requester;             // peer you need to send it back to
+    private Peer waitingPeer;             // peer you need to send it back to
     private SymmetricKey key;           // key you need to encrypt the inner REPLY with
     private Message requestMessage;     // the REQUEST ONION message for which this whole thing handles
 
@@ -15,14 +15,14 @@ public class OnionHandler implements Runnable{
 
 
     // Constructors
-    public OnionHandler(Message onionRequest, Peer requester){
+    public OnionHandler(Message onionRequest, Peer waitingPeer){
         requestMessage = onionRequest;
-        this.requester = requester;
+        this.waitingPeer = waitingPeer;
         key = OnionKeys.get(requestMessage.getConnection_id());
     }
-    public OnionHandler(Message onionRequest, Peer requester, SymmetricKey key){
+    public OnionHandler(Message onionRequest, Peer waitingPeer, SymmetricKey key){
         requestMessage = onionRequest;
-        this.requester = requester;
+        this.waitingPeer = waitingPeer;
         this.key = key;
     }
     // end Constructors
@@ -33,6 +33,7 @@ public class OnionHandler implements Runnable{
 
     @Override
     public void run() {
+        // started when corresponding reply is received
         if(innerReply == null){
             Logger.log("Inner Reply not set! You need to init() the innerReply message in order to run OnionHandler");
             return;
@@ -43,6 +44,6 @@ public class OnionHandler implements Runnable{
         // create reply with corresponding id
         Message message = Message.createONION_REPLY(requestMessage, body);
         // send it back
-        requester.sendMessage(message);
+        waitingPeer.sendMessage(message);
     }
 }

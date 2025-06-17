@@ -14,6 +14,12 @@ import java.util.Base64;
 
 public class AsymmetricKeyPair {
 
+    // functionalities:
+    //      - encrypt (with public key) and decrypt (with private key)
+    //      - convert a public key to string and get an AsymmetricKeyPair with only a public key from it
+    //      -
+
+
 
     // variables
     private PublicKey publicKey;
@@ -41,7 +47,7 @@ public class AsymmetricKeyPair {
     }
 
 
-    // todo - from a public key encoded to string
+    // - from a public key encoded to string
     public AsymmetricKeyPair(String publicKeyEncoding) throws InvalidKeySpecException{
         byte[] decodedPublicKey = Base64.getDecoder().decode(publicKeyEncoding);
         X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(decodedPublicKey);

@@ -94,7 +94,7 @@ public class Message {
     public static Message createPEER_DISCOVERY_REPLY(String id, String senderAddress){
         // -  make a list of addresses excluding the sender's address
         // addresses are separated by ';'
-        String addresses = PeerList.getAddressList(senderAddress);
+        String addresses = PeerList.getAddressList(senderAddress, PeerList.getSize());
 
         try {
             return new Message(id, MessageMainType.REPLY, MessageSubType.PEER_DISCOVERY, null, addresses);

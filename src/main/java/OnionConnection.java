@@ -3,7 +3,6 @@ import Util.Logger;
 import Keys.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -11,8 +10,6 @@ public class OnionConnection implements Runnable {
     // for storing keys when you are the original sender of onion message
 
     // its run method is a protocol for establishing keys between you and the in-between nodes
-
-    // todo - maybe a diff blocking queue?
 
     private LinkedBlockingQueue<Message> messageQueue = new LinkedBlockingQueue<>();
     // put in at MessageHandling if message.getId() is present in
@@ -26,21 +23,35 @@ public class OnionConnection implements Runnable {
     private final String final_address;
 
     // Constructors
-    public OnionConnection(int n, String final_dest){
+    public OnionConnection(int n, String final_dest) throws IOException{
+        final_address = final_dest;
+        if(PeerList.getPeer(final_address) == null){
+            Logger.log("Final address for onion connection not present in PeerList:" + final_address, LogLevel.ERROR);
+            throw new IOException();
+        }
+
         // no point in having more in-between nodes than the total amount of peers in the network
         // or using the final destination as an in-between node
-        this.n = Math.min(n, PeerList.getSize() - 1);
-        final_address = final_dest;
+        n = Math.max(n, 0); // in case n < 0
+        int max_bound = Math.max(PeerList.getSize() - 1, 0);    // in-case PeerList.getSize() == 0
+        this.n = Math.min(n, max_bound);
 
         this.symmetricKeys = new SymmetricKey[n];
         this.addresses = new String[n];
         this.connection_ids = new String[n];
+        MyOnionConnectionList.add(this);
     }
 
-    public OnionConnection(String final_dest){
-        // default number of in-between peers == 3
-        n = 3;
+    public OnionConnection(String final_dest) throws IOException{
         final_address = final_dest;
+        if(PeerList.getPeer(final_address) == null){
+            Logger.log("Final address for onion connection not present in PeerList:" + final_address, LogLevel.ERROR);
+            throw new IOException();
+        }
+
+        int max_bound = Math.max(PeerList.getSize() - 1, 0);    // in-case PeerList.getSize() == 0
+        // default number of in-between peers == 3
+        n = Math.min(3, max_bound);
 
         this.symmetricKeys = new SymmetricKey[n];
         this.addresses = new String[n];
@@ -62,8 +73,7 @@ public class OnionConnection implements Runnable {
 
         Thread.currentThread().setName("OnionConnection[" + final_address + "]");
 
-        ArrayList<String> temp = new ArrayList<>(PeerList.getAddressArrayList(final_address).subList(0, n));
-        addresses = temp.toArray(new String[0]);
+        addresses = PeerList.getAddressArray(".", n);
 
         // 1 - get keys
         Message message;
@@ -72,7 +82,7 @@ public class OnionConnection implements Runnable {
             // create KEY_EXCHANGE message
             message = Message.createKEY_EXCHANGE_REQUEST();
 
-            // - wrap it in ONION messages
+            // - wrap it in ONION messages with encryption and corresponding connection_ids
             for (int j = i; j > 0; j--) {
                 // nextAddress == address[j]
                 // message for peer[address[j-1]], so encrypt with key[j-1]
@@ -177,7 +187,7 @@ public class OnionConnection implements Runnable {
 
     // used for adding messages to processing queue
     // only if message was sent by this Onion Connection
-    public void addMessage(Message message){
+    public void addMessageToQueue(Message message){
         messageQueue.add(message);
     }
 

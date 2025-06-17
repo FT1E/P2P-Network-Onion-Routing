@@ -1,11 +1,15 @@
 import Util.LogLevel;
 import Util.Logger;
 
+import java.io.IOException;
 import java.util.Random;
 
 
 // TODO: 16/06/2025
 //      - code clean up
+//      - maybe also add a command to have an onion connection with custom number of in-between nodes (positive and 1 less than the number of peers you have, so you don't have repeating in-between nodes and the final node isn't used as an in-between node)
+//      - also allow testing with real computers not just with docker containers
+//          - just add a bootstrap_address variable in Global
 public class Main {
     public static void main(String[] args) {
 
@@ -25,10 +29,13 @@ public class Main {
         }
 
         //  todo - connect to others based on env variables
-        if(!System.getenv("BOOTSTRAP_ADDRESS").equals("null")) {
+        try {
             Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
             peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+        } catch (IOException e) {
+            // logger in constructor
         }
+
 
 
         while(PeerList.getSize() < 4) {
@@ -42,7 +49,6 @@ public class Main {
         // todo
         //      - start sending messages
         //      - api for it
-        //      - modify main a bit so that a server is only started once - ex. if someone runs Main again only the interface for sending messages is available
 
         if(System.getenv("MANUAL") != null){
             new Thread(new QueryHandler()).start();
@@ -50,7 +56,7 @@ public class Main {
         }
 
 
-        Logger.log("Current address list:" + PeerList.getAddressList(""), LogLevel.DEBUG);
+        Logger.log("Current address list:" + PeerList.getAddressList("", PeerList.getSize()), LogLevel.DEBUG);
 
 //        if (!System.getenv("PEER_ID").equals("peer1")) {
 //            return;
@@ -58,8 +64,14 @@ public class Main {
 
         // testing for debug
 //        Logger.log("Creating OC object in main", LogLevel.DEBUG);
-        String randomAddress = PeerList.getAddressArrayList("").get(new Random().nextInt(4));
-        OnionConnection oc = new OnionConnection(randomAddress);
+        String randomAddress = PeerList.getAddressList("", 1);
+        OnionConnection oc = null;
+        try {
+            oc = new OnionConnection(randomAddress);
+        } catch (IOException e) {
+            // logger in constructor
+            return;
+        }
 //        new Thread(oc).start();
 
         while(!oc.isConnection_established()){

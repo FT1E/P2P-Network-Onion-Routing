@@ -5,6 +5,7 @@ import Util.Logger;
 import java.io.IOException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessageHandling {
     // includes static methods for processing messages
@@ -12,11 +13,11 @@ public class MessageHandling {
 
 
     // dictionary for key_exchange requests
-    private static HashMap<String, AsymmetricKeyPair> key_exchange_map = new HashMap<>();
+    private static ConcurrentHashMap<String, AsymmetricKeyPair> key_exchange_map = new ConcurrentHashMap<>();
 
     // when you receive a REPLY whether you should process it as a normal REPLY
     // or if you need to wrap it in encryption and send it back
-    private static HashMap<String, OnionHandler> onionRequests = new HashMap<>();
+    private static ConcurrentHashMap<String, OnionHandler> onionRequests = new ConcurrentHashMap<>();
 
 
     public static void handle(Message message, Peer sender){
@@ -141,7 +142,11 @@ public class MessageHandling {
         //  - try to connect to every peer in the list
         //  - don't connect to peers you're already connected to
         for (int i = 0; i < addresses.length; i++) {
-            new Peer(addresses[i]); // peer won't be added if a connection with that peer is already established
+            try {
+                new Peer(addresses[i]); // peer won't be added if a connection with that peer is already established
+            } catch (IOException e) {
+                // logger in constructor
+            }
         }
     }
 

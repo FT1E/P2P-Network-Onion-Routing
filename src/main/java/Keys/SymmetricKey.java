@@ -14,8 +14,9 @@ import java.util.Base64;
 
 public class SymmetricKey {
 
-
-    // todo - maybe a different encryption/padding algorithm?
+    // functionalities:
+    //      - encrypt / decrypt a string
+    //      - convert key to string and vice versa
 
     private SecretKey symmetricKey;
     private byte[] ivBytes;
