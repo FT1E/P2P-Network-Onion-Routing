@@ -73,7 +73,7 @@ public class OnionConnection implements Runnable {
 
         Thread.currentThread().setName("OnionConnection[" + final_address + "]");
 
-        addresses = PeerList.getAddressArray(".", n);
+        addresses = PeerList.getAddressArray(final_address, n);
 
         // 1 - get keys
         Message message;

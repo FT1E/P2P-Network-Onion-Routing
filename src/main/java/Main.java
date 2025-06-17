@@ -22,23 +22,17 @@ public class Main {
 
         Global.setTrack(false);
 
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
-        }
-
-        //  todo - connect to others based on env variables
-        try {
-            Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
-            peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
-        } catch (IOException e) {
-            // logger in constructor
-        }
-
-
-
-        while(PeerList.getSize() < 4) {
+        // since everyone is connecting to peer1
+        // to make sure the node has started the server first
+        // before they try to connect to him
+        if(!"peer1".equals(System.getenv("PEER_ID"))) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
+            }
+        }else{
+            // also peer1 should make sure peer2 has started his server
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -46,46 +40,29 @@ public class Main {
             }
         }
 
-        // todo
-        //      - start sending messages
-        //      - api for it
-
-        if(System.getenv("MANUAL") != null){
-            new Thread(new QueryHandler()).start();
-//            return;
-        }
 
 
-        Logger.log("Current address list:" + PeerList.getAddressList("", PeerList.getSize()), LogLevel.DEBUG);
 
-//        if (!System.getenv("PEER_ID").equals("peer1")) {
-//            return;
-//        }
-
-        // testing for debug
-//        Logger.log("Creating OC object in main", LogLevel.DEBUG);
-        String randomAddress = PeerList.getAddressList("", 1);
-        OnionConnection oc = null;
-        try {
-            oc = new OnionConnection(randomAddress);
-        } catch (IOException e) {
-            // logger in constructor
-            return;
-        }
-//        new Thread(oc).start();
-
-        while(!oc.isConnection_established()){
-//            Logger.log("Waiting for OC to establish connection ...", LogLevel.DEBUG);
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
+        //  - connect to a booststrap address (env variable) if available
+        //  - otherwise you can connect to someone with CONNECT command in QueryHandler
+        //  - once you connect to someone you immediately send them a PEER_DISCOVERY request
+        if(System.getenv("BOOTSTRAP_ADDRESS") != null) {
+            while (true) {
+                try {
+                    Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
+                    Thread.sleep(1000);
+                    peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+                    break;
+                } catch (IOException | InterruptedException e) {
+                    // logger in constructor
+                    Logger.log("Error in Thread.sleep!", LogLevel.DEBUG);
+                    continue;
+                }
             }
         }
 
-        oc.sendMessage(Message.createCHAT_REQUEST("Secret message from " + System.getenv("PEER_ID") + " on the other side!"));
-
-
+        // - api for sending messages
+        new Thread(new QueryHandler()).start();
 
     }
 }

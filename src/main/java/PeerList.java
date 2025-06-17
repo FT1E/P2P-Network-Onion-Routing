@@ -26,7 +26,8 @@ public class PeerList {
     private static ExecutorService threadPool = Executors.newCachedThreadPool();
 
 
-
+    // don't make an address list if a new peer is being added
+    private static final Object lock = new Object();
 
 
     // Dictionary methods
@@ -37,30 +38,36 @@ public class PeerList {
     }
 
     // add
-    public synchronized static boolean addPeer(Peer peer){
-        if(peer.getAddress().equals("127.0.0.1")){
-            Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
-            peer.disconnect();
-            return false;
+    public static boolean addPeer(Peer peer){
+        synchronized (lock) {
+            if (peer.getAddress().equals("127.0.0.1")) {
+                Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
+                peer.disconnect();
+                return false;
+            }
+
+            if (peerMap.putIfAbsent(peer.getAddress(), peer) != null) {
+//                String address = peer.getAddress();
+                Logger.log("Duplicate connection with " + peer.getAddress() + ", closing connection ...", LogLevel.DEBUG);
+                peer.disconnect();
+//                Logger.log("After duplicate is the address [" + address + "] is peer still in PeerList:"  + (getPeer(address) != null), LogLevel.DEBUG);
+                return false;
+            }
+
+
+            Logger.log("New peer added! Address: " + peer.getAddress());
+            // - submit to thread pool - so it can read and process messages from the peer
+            threadPool.submit(peer);
+            return true;
         }
-
-        if(peerMap.putIfAbsent(peer.getAddress(), peer) != null){
-            Logger.log("Duplicate connection with " + peer.getAddress(), LogLevel.DEBUG);
-            peer.disconnect();
-            return false;
-        }
-
-
-        Logger.log("New peer added! Address: " + peer.getAddress());
-        // - submit to thread pool - so it can read and process messages from the peer
-        threadPool.submit(peer);
-        return true;
     }
 
     // remove
     public static boolean removePeer(Peer peer){
 //        Logger.log("AddressList before removing peer:" + getAddressList("."));
-        return peerMap.remove(peer.getAddress(), peer);
+        synchronized (lock) {
+            return peerMap.remove(peer.getAddress(), peer);
+        }
     }
     // end Dictionary methods
 
@@ -69,18 +76,19 @@ public class PeerList {
     // getAddresses
     // get a list of all addresses excluding one
     // used for PEER_DISCOVERY
-    private synchronized static ArrayList<String> getAddressArrayList(String excludeAddr, int n){
+    private static ArrayList<String> getAddressArrayList(String excludeAddr, int n){
+        synchronized (lock) {
+            ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
+            addresses.remove(excludeAddr);
 
-        ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
-        addresses.remove(excludeAddr);
-
-        if(n < 0){
-            n = 0;
-        } else if(n > addresses.size()){
-            n = addresses.size();
+            if (n < 0) {
+                n = 0;
+            } else if (n > addresses.size()) {
+                n = addresses.size();
+            }
+            Collections.shuffle(addresses);
+            return new ArrayList<>(addresses.subList(0, n));
         }
-        Collections.shuffle(addresses);
-        return new ArrayList<>(addresses.subList(0, n));
     }
     public static String[] getAddressArray(String excludeAddr, int n){
         return getAddressArrayList(excludeAddr, n).toArray(new String[0]);
@@ -98,7 +106,4 @@ public class PeerList {
     public static int getSize(){
         return peerMap.size();
     }
-
-
-
 }

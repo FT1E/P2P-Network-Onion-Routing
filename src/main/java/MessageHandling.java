@@ -106,8 +106,14 @@ public class MessageHandling {
         //  - get next peer
         Peer peer = PeerList.getPeer(nextAddress);
         if (peer == null){
-            Logger.log("Not connected to nextAddress == [" + nextAddress + "]", LogLevel.WARN);
-            return;
+            Logger.log("Not connected to nextAddress == [" + nextAddress + "], trying to connect to it ...", LogLevel.WARN);
+            try{
+                peer = new Peer(nextAddress);
+                Logger.log("Successfully connected to nextAddress == [" + nextAddress + "]", LogLevel.SUCCESS);
+            }catch (IOException e){
+                Logger.log("Failed to connect to nextAddress == [" + nextAddress + "]", LogLevel.ERROR);
+                return;
+            }
         }
 
         //  - save a runnable or something which is started when REPLY of the inner message is received

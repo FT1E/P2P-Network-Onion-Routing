@@ -1,19 +1,22 @@
 version: '3.8'
 
 services:
+
     peer1:
-      image: p2p_or:1.5
+      image: p2p_or:1.6
       ports:
         - "5001:5000"
       environment:
         - PEER_ID=peer1
-        - BOOTSTRAP_ADDRESS=null
+        - BOOTSTRAP_ADDRESS=peer2
         - PEERS=peer2,peer3,peer4,peer5
       networks:
         - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
 
     peer2:
-      image: p2p_or:1.5
+      image: p2p_or:1.6
       ports:
         - "5002:5000"
       environment:
@@ -22,9 +25,11 @@ services:
         - PEERS=peer3,peer4,peer5
       networks:
         - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
 
     peer3:
-      image: p2p_or:1.5
+      image: p2p_or:1.6
       ports:
         - "5003:5000"
       environment:
@@ -33,9 +38,11 @@ services:
         - PEERS=peer4,peer5
       networks:
         - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
 
     peer4:
-      image: p2p_or:1.5
+      image: p2p_or:1.6
       ports:
         - "5004:5000"
       environment:
@@ -44,9 +51,11 @@ services:
         - PEERS=peer5
       networks:
         - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
 
     peer5:
-      image: p2p_or:1.5
+      image: p2p_or:1.6
       ports:
         - "5005:5000"
       environment:
@@ -55,6 +64,74 @@ services:
         - PEERS=
       networks:
         - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
+    peer6:
+      image: p2p_or:1.6
+      ports:
+        - "5006:5000"
+      environment:
+        - PEER_ID=peer6
+        - BOOTSTRAP_ADDRESS=peer1
+        - PEERS=peer2,peer3,peer4,peer5
+      networks:
+        - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
+    peer7:
+      image: p2p_or:1.6
+      ports:
+        - "5007:5000"
+      environment:
+        - PEER_ID=peer7
+        - BOOTSTRAP_ADDRESS=peer1
+        - PEERS=peer2,peer3,peer4,peer5
+      networks:
+        - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
+    peer8:
+      image: p2p_or:1.6
+      ports:
+        - "5008:5000"
+      environment:
+        - PEER_ID=peer8
+        - BOOTSTRAP_ADDRESS=peer1
+        - PEERS=peer2,peer3,peer4,peer5
+      networks:
+        - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
+    peer9:
+      image: p2p_or:1.6
+      ports:
+        - "5009:5000"
+      environment:
+        - PEER_ID=peer9
+        - BOOTSTRAP_ADDRESS=peer1
+        - PEERS=peer2,peer3,peer4,peer5
+      networks:
+        - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
+    peer10:
+      image: p2p_or:1.6
+      ports:
+        - "5010:5000"
+      environment:
+        - PEER_ID=peer10
+        - BOOTSTRAP_ADDRESS=peer1
+        - PEERS=peer2,peer3,peer4,peer5
+      networks:
+        - p2p-network
+      stdin_open: true # docker run -i
+      tty: true        # docker run -t
+
 
 networks:
   p2p-network:

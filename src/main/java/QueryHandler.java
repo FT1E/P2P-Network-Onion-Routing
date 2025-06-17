@@ -15,17 +15,26 @@ public class QueryHandler implements Runnable{
 
         Scanner sc = new Scanner(System.in);
 
+        Logger.log("QueryHandler started! Press enter to see peer list and onion connection list (where you are the original sender):", LogLevel.SUCCESS);
+//        Logger.log("*".repeat(50), LogLevel.DEBUG);
 
         String input;
         String[] addreses;
         OnionConnection[] onionConnections;
-        while (true){
+
+        sc.nextLine();
+        while(true){
 
             addreses = getPeerList();
             Logger.log(formatPeerList(addreses));
 
             onionConnections = getOCArray();
             Logger.log(formatOCArray(onionConnections));
+
+            if(!sc.hasNextLine()) {
+                Logger.log("Scanner reached EOF, Stopping QueryHandler ...", LogLevel.DEBUG);
+                break;
+            }
 
             input = sc.nextLine();
             processInput(input, addreses, onionConnections);
@@ -80,7 +89,7 @@ public class QueryHandler implements Runnable{
 
         String[] tokens = input.split(" ", 2);
         if(tokens.length < 2){
-            Logger.log("Query has too few arguments!", LogLevel.WARN);
+            return;
         }
 
         // check command
@@ -275,6 +284,10 @@ public class QueryHandler implements Runnable{
 
     // - CONNECT
     private void handleConnect(String address){
+        if(PeerList.getPeer(address) != null){
+            Logger.log("Already connected to [" + address + "]");
+            return;
+        }
         try {
             Peer peer = new Peer(address);
             peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
