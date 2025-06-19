@@ -5,9 +5,6 @@ import java.io.IOException;
 import java.util.Random;
 
 
-// TODO: 16/06/2025
-//      - a message for destroying / dropping onion connections + a method dropConnection sending a message to drop connection / forget keys stored in in-between nodes
-//          - done in a secure way
 public class Main {
     public static void main(String[] args) {
 

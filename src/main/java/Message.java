@@ -169,7 +169,7 @@ public class Message {
     public static Message createGET_REPLY(Message request){
         try {
             String value = Global.getVariable(request.getBody());
-            String body = request.getBody() + ":" + (value != null ? value : "null");
+            String body = request.getBody() + " == \"" + (value != null ? value : "null") + "\"";
             return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.GET, null, body);
         } catch (IOException e) {
             return null;

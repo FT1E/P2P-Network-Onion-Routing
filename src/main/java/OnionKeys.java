@@ -33,6 +33,7 @@ public class OnionKeys {
     }
 
     public static boolean remove(String connection_id){
+//        Logger.log("Removing onion key with connection id == " + connection_id, LogLevel.DEBUG);
         return (onionKeys.remove(connection_id) == null);
     }
 

@@ -213,8 +213,8 @@ public class QueryHandler implements Runnable{
         //  - so the final destination isn't used as an in-between node
         //  - and no peer is used twice in the onion routing as an in-between node
 
-        String[] tokens = input.split(" ", 6);
-        if(tokens.length < 6){
+        String[] tokens = input.split(" ", 5);
+        if(tokens.length < 5){
             Logger.log("Query has too few arguments!", LogLevel.WARN);
             return;
         }

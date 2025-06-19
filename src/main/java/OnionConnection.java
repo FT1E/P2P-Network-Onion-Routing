@@ -4,6 +4,7 @@ import Keys.*;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class OnionConnection implements Runnable {
@@ -21,6 +22,8 @@ public class OnionConnection implements Runnable {
     private SymmetricKey[] symmetricKeys;
     private String[] addresses;
     private final String final_address;
+
+    private final Message quitMessage = Message.createCHAT(Global.getOCDropPhrase());
 
     // Constructors
     public OnionConnection(int n, String final_dest) throws IOException{
@@ -76,6 +79,8 @@ public class OnionConnection implements Runnable {
         addresses = PeerList.getAddressArray(final_address, n, true);
 
         // 1 - get keys
+        //  - if an error happens during this key exchange protocol
+        //  - this OC is removed from MyOnionConnectionList and connection is dropped
         Message message;
         for (int i = 0; i < n; i++) {
 
@@ -101,17 +106,16 @@ public class OnionConnection implements Runnable {
                 message = messageQueue.take();
             } catch (InterruptedException e) {
                 Logger.log("Error during key exchange protocol, while trying to take message from queue!", LogLevel.ERROR);
+                MyOnionConnectionList.remove(this);
                 return;
             }
 
             //  - peel off the every encryption
-            for (int j = 0; j < i; j++) {
-                try {
-                    message = new Message(symmetricKeys[j].decrypt(message.getBody()));
-                } catch (IOException e) {
-                    Logger.log("Invalid inner message in Onion, during key exchange protocol!", LogLevel.ERROR);
-                    return;
-                }
+            message = decrypt(i, message);
+            if(message == null){
+                Logger.log("Error in unwrapping message during key exchange protocol", LogLevel.ERROR);
+                MyOnionConnectionList.remove(this);
+                return;
             }
 
 
@@ -121,32 +125,43 @@ public class OnionConnection implements Runnable {
             connection_ids[i] = message.getConnection_id();
             if (symmetricKeys[i] == null){
                 // logger in the above method call
+                MyOnionConnectionList.remove(this);
                 return;
             }
 
         }
 
-//        MyOnionConnectionList.add(this);
-        connection_established = true;
+        setConnection_established(true);
         Logger.log("Successfully established OnionConnection with in-between addresses:" + Arrays.toString(addresses) + "; and final address " + final_address, LogLevel.SUCCESS);
 
         // 2 - process messages
-        while (true){
+        while (isConnection_established() || !messageQueue.isEmpty()){
             try {
                 message = messageQueue.take();
             } catch (InterruptedException e) {
                 Logger.log("Error extracting message from queue", LogLevel.WARN);
                 continue;
             }
+            if(message.equals(quitMessage)){
+                break;
+            }
             message = decrypt(message);
             MessageHandling.handle(message, PeerList.getPeer(final_address));
         }
+
+        // - send a message which tells each node on the path to drop connection, i.e. forget the key
+        dropConnection();
+        MyOnionConnectionList.remove(this);
     }
 
 
     // whether all keys are received
     public boolean isConnection_established(){
         return connection_established;
+    }
+
+    private void setConnection_established(boolean status){
+        connection_established = status;
     }
 
     // SEND message
@@ -170,10 +185,39 @@ public class OnionConnection implements Runnable {
         PeerList.getPeer(addresses[0]).sendMessage(message);
     }
 
+    public void dropConnection(){
+
+        Logger.log("Dropping onion connection ...", LogLevel.DEBUG);
+        setConnection_established(false);
+
+        Message message;
+        //  encrypt message - using key corresponding with appropriate nextAddress and stuff
+        // no need to send dropConnection message to the final node so no final_address is given
+        String encrypted_body = symmetricKeys[n-1].encrypt("drop " + null + " " + Global.getOCDropPhrase());
+        message = Message.createONION_REQUEST(connection_ids[n-1], encrypted_body);
+        for (int i = n-1; i > 0; i--) {
+            encrypted_body = symmetricKeys[i-1].encrypt("drop " + addresses[i] + " " + message.toString());
+            message = Message.createONION_REQUEST(connection_ids[i-1], encrypted_body);
+        }
+
+        //  send it
+        PeerList.getPeer(addresses[0]).sendMessage(message);
+    }
+
+
     private Message decrypt(int wrapCount, Message message){
+        String inner;
         for (int i=0; i < wrapCount; i++){
+            inner = symmetricKeys[i].decrypt(message.getBody());
+
+            if(inner.equals(symmetricKeys[i].encrypt(Global.getOCDropPhrase()))){
+                setConnection_established(false);
+                addMessageToQueue(quitMessage);
+//                Logger.log("Received encrypted drop phrase for dropping onion connection!", LogLevel.DEBUG);
+                return null;
+            }
             try {
-                message = new Message(symmetricKeys[i].decrypt(message.getBody()));
+                message = new Message(inner);
             } catch (IOException e) {
                 Logger.log("Invalid inner message in ONION");
                 return null;

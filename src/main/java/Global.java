@@ -10,6 +10,9 @@ public class Global {
     // key == variable name
     // value == variable value
 
+
+    private static final String OCDropPhrase = "Red Rising";
+
     public static int getSERVER_PORT() {
         return SERVER_PORT;
     }
@@ -30,5 +33,9 @@ public class Global {
 
     public static String getVariable(String name){
         return variables.get(name);
+    }
+
+    public static String getOCDropPhrase(){
+        return OCDropPhrase;
     }
 }

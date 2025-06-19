@@ -20,6 +20,9 @@ public class MessageHandling {
 
 
     public static void handle(Message message, Peer sender){
+        if(message == null){
+            return;
+        }
         if(message.getMessageMainType() == MessageMainType.REQUEST){
             switch (message.getMessageSubType()){
                 case CHAT -> handleCHAT_REQUEST(message, sender);
@@ -76,10 +79,10 @@ public class MessageHandling {
     }
 
     // - ONION
-    private static void handleONION_REQUEST(Message message, Peer requester){
+    private static void handleONION_REQUEST(Message outerMessage, Peer requester){
         //  - getConnectionId
         //  - get corresponding key - if none just send back a REPLY unknown or something
-        SymmetricKey symmetricKey = OnionKeys.get(message.getConnection_id());
+        SymmetricKey symmetricKey = OnionKeys.get(outerMessage.getConnection_id());
 
         if(symmetricKey == null){
             // no point in doing anything if you don't have the key
@@ -88,19 +91,41 @@ public class MessageHandling {
         }
 
         //  - decrypt to get inner message which should have body == "<nextAddress> <msg.toString()>"
-        String decrypted_body = symmetricKey.decrypt(message.getBody());
+        String decrypted_body = symmetricKey.decrypt(outerMessage.getBody());
 
 //        Logger.log("Decrypted body: " + decrypted_body, LogLevel.DEBUG);
 
+        boolean drop=false;   // whether you need to save an OnionHandler or not, i.e. whether you expect to receive a REPLY or not
+
         String[] tokens = decrypted_body.split(" ", 2);
-        String nextAddress = tokens[0];
+        String nextAddress;
         Message innerMessage;
-        try {
-            innerMessage = new Message(tokens[1]);
-        } catch (IOException e) {
-            Logger.log("Invalid inner message in REQUEST ONION");
-            return;
+        if("drop".equals(tokens[0])){
+            // if it's an onion request to drop connection
+            drop = true;
+            // remove the key
+            OnionKeys.remove(outerMessage.getConnection_id());
+            tokens = decrypted_body.split(" ", 3);
+            nextAddress = tokens[1];
+            try {
+                innerMessage = new Message(tokens[2]);
+            } catch (IOException e) {
+//                Logger.log("Invalid inner message in REQUEST ONION");
+                return;
+            }
+            // pass on the inner drop message to the next node
+        } else{
+            // if it's a normal onion request
+            nextAddress = tokens[0];
+            try {
+                innerMessage = new Message(tokens[1]);
+            } catch (IOException e) {
+                Logger.log("Invalid inner message in REQUEST ONION");
+                return;
+            }
+
         }
+
 
         //  - get next peer
         Peer peer = PeerList.getPeer(nextAddress);
@@ -110,15 +135,19 @@ public class MessageHandling {
                 peer = new Peer(nextAddress);
                 Logger.log("Successfully connected to nextAddress == [" + nextAddress + "]", LogLevel.SUCCESS);
             }catch (IOException e){
-                Logger.log("Failed to connect to nextAddress == [" + nextAddress + "]", LogLevel.ERROR);
-                return;
+                Logger.log("Failed to connect to nextAddress == [" + nextAddress + "], sending back message to drop connection", LogLevel.ERROR);
+                // send back to the requester to drop onion connection
+                innerMessage = Message.createONION_REPLY(outerMessage, symmetricKey.encrypt(symmetricKey.encrypt(Global.getOCDropPhrase())));
+                peer = requester;
+                drop = true;
             }
         }
 
-        //  - save a runnable or something which is started when REPLY of the inner message is received
-        OnionHandler onionHandler = new OnionHandler(message, requester, symmetricKey);
-
-        onionRequests.put(innerMessage.getId(), onionHandler);
+        if(!drop) {
+            //  - save a runnable or something which is started when REPLY of the inner message is received
+            OnionHandler onionHandler = new OnionHandler(outerMessage, requester, symmetricKey);
+            onionRequests.put(innerMessage.getId(), onionHandler);
+        }
 
         //  - send it to next
         peer.sendMessage(innerMessage);
@@ -157,6 +186,12 @@ public class MessageHandling {
 
     // - KEY_EXCHANGE
     public static SymmetricKey handleKEY_EXCHANGE_REPLY(Message message){
+
+        // this might happen if a connection is dropped during the key exchange protocol while establishing onion connection
+        if(message == null || message.getMessageSubType() != MessageSubType.KEY_EXCHANGE){
+            return null;
+        }
+
         //  - get corresponding private key
         //  - decrypt message with it
         //  - store the key in corresponding onion connection
