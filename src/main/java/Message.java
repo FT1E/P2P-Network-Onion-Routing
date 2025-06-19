@@ -94,7 +94,7 @@ public class Message {
     public static Message createPEER_DISCOVERY_REPLY(String id, String senderAddress){
         // -  make a list of addresses excluding the sender's address
         // addresses are separated by ';'
-        String addresses = PeerList.getAddressList(senderAddress, PeerList.getSize());
+        String addresses = PeerList.getAddressList(senderAddress, PeerList.getSize(), true);
 
         try {
             return new Message(id, MessageMainType.REPLY, MessageSubType.PEER_DISCOVERY, null, addresses);
@@ -157,20 +157,20 @@ public class Message {
 
 
     // GET_VARIABLE
-    public static Message createGET_VARIABLE_REQUEST(String variable_name){
+    public static Message createGET_REQUEST(String variable_name){
         try {
-            return new Message(null, MessageMainType.REQUEST, MessageSubType.GET_VAR, null, variable_name);
+            return new Message(null, MessageMainType.REQUEST, MessageSubType.GET, null, variable_name);
         } catch (IOException e) {
             // redundant
             return null;
         }
     }
 
-    public static Message createGET_VARIABLE_REPLY(Message request){
+    public static Message createGET_REPLY(Message request){
         try {
             String value = Global.getVariable(request.getBody());
             String body = request.getBody() + ":" + (value != null ? value : "null");
-            return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.GET_VAR, null, body);
+            return new Message(request.getId(), MessageMainType.REPLY, MessageSubType.GET, null, body);
         } catch (IOException e) {
             return null;
         }

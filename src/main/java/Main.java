@@ -6,10 +6,8 @@ import java.util.Random;
 
 
 // TODO: 16/06/2025
-//      - code clean up
-//      - maybe also add a command to have an onion connection with custom number of in-between nodes (positive and 1 less than the number of peers you have, so you don't have repeating in-between nodes and the final node isn't used as an in-between node)
-//      - also allow testing with real computers not just with docker containers
-//          - just add a bootstrap_address variable in Global
+//      - a message for destroying / dropping onion connections + a method dropConnection sending a message to drop connection / forget keys stored in in-between nodes
+//          - done in a secure way
 public class Main {
     public static void main(String[] args) {
 
@@ -47,18 +45,14 @@ public class Main {
         //  - otherwise you can connect to someone with CONNECT command in QueryHandler
         //  - once you connect to someone you immediately send them a PEER_DISCOVERY request
         if(System.getenv("BOOTSTRAP_ADDRESS") != null) {
-            while (true) {
-                try {
-                    Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
-                    Thread.sleep(1000);
-                    peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
-                    break;
-                } catch (IOException | InterruptedException e) {
-                    // logger in constructor
-                    Logger.log("Error in Thread.sleep!", LogLevel.DEBUG);
-                    continue;
-                }
+            try {
+                Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
+                Thread.sleep(1000);
+                peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+            } catch (IOException | InterruptedException e) {
+                // logger in constructor
             }
+
         }
 
         // - api for sending messages

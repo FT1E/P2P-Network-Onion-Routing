@@ -47,7 +47,11 @@ public class Server implements Runnable {
             }
 
             //  - create a new client - every client adds itself to peerlist in its constructor if no error occured
-            new Peer(socket);
+            try {
+                new Peer(socket);
+            } catch (IOException e) {
+                continue;
+            }
 
         }
     }

@@ -2,6 +2,7 @@ import Util.LogLevel;
 import Util.Logger;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.net.Socket;
 
 public class Peer implements Runnable {
@@ -27,7 +28,7 @@ public class Peer implements Runnable {
 
     // 1 - from a socket
     // when someone connects to you
-    public Peer(Socket socket) {
+    public Peer(Socket socket) throws IOException{
         this.socket = socket;
 
         try {
@@ -39,7 +40,9 @@ public class Peer implements Runnable {
         }
 
         // peer adds itself to PeerList if no error happens
-        PeerList.addPeer(this);
+        if(!PeerList.addPeer(this)){
+            throw new IOException();
+        }
     }
 
     //  2 - from an address
@@ -64,7 +67,10 @@ public class Peer implements Runnable {
         }
 
         // peer adds itself to PeerList if no error happens
-        PeerList.addPeer(this);
+        if(!PeerList.addPeer(this)){
+            // so that you don't send messages if connection is closed
+            throw new IOException();
+        }
     }
     // end  constructors
 
@@ -157,7 +163,11 @@ public class Peer implements Runnable {
 
     // peer address
     public String getAddress(){
-        return socket.getInetAddress().getHostAddress();
+        InetAddress address = socket.getInetAddress();
+        if(address != null){
+            return address.getHostAddress();
+        }
+        return null;
     }
 
     // end getters

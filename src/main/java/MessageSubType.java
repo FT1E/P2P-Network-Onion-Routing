@@ -3,5 +3,5 @@ public enum MessageSubType {
     PEER_DISCOVERY,
     KEY_EXCHANGE,
     ONION,
-    GET_VAR,
+    GET,
 }

@@ -50,7 +50,7 @@ public class QueryHandler implements Runnable{
 
     // Peer List methods
     private String[] getPeerList(){
-        return PeerList.getAddressArray(".", PeerList.getSize());
+        return PeerList.getAddressArray(".", PeerList.getSize(), false);
     }
 
     private String formatPeerList(String[] peerList){
@@ -96,6 +96,7 @@ public class QueryHandler implements Runnable{
         switch (tokens[0].toUpperCase()){
             case "DSEND" -> handleDSend(input, addresses);
             case "OSEND" -> handleOSend(input, addresses, onionConnections);
+            case "OSENDN" -> handleOSendN(input, addresses, onionConnections);
             case "TRACK" -> handleTrack(tokens[1]);
             case "CREATE" -> handleCreate(tokens[1]);
             case "CONNECT" -> handleConnect(tokens[1]);
@@ -104,9 +105,6 @@ public class QueryHandler implements Runnable{
                 return;
             }
         }
-
-
-
     }
     // end processInput
 
@@ -122,48 +120,15 @@ public class QueryHandler implements Runnable{
         }
 
         // check address argument
-        String address = null;
-        try{
-            int i = Integer.parseInt(tokens[1]);
-            address = addresses[i];
-        }catch (IndexOutOfBoundsException e){
-            Logger.log("Index out of bounds for given peer list!", LogLevel.WARN);
-            return;
-        }catch (NumberFormatException e){
-            address = tokens[1];
-        }
-
+        String address = checkAddressArgument(tokens[1], addresses);
         Peer peer = PeerList.getPeer(address);
-        if(peer == null){
-            Logger.log("No peer with given address!", LogLevel.WARN);
-        }
 
-        MessageSubType messageSubType;
 
-        try {
-            messageSubType = MessageSubType.valueOf(tokens[2].toUpperCase());
-        }catch (IllegalArgumentException e){
-            Logger.log("Invalid message type:" + tokens[2].toUpperCase(), LogLevel.WARN);
+        // check message argument
+        Message message = checkMessageArgument(tokens[2], tokens[3]);
+        if(message == null){
             return;
         }
-
-       // at this point
-       // valid command - DSEND
-       // valid peer chosen
-       // valid message type
-       // valid length of query (len >= 4)
-        // so make a REQUEST message with body = tokens[3]
-
-        Message message = null;
-        switch (messageSubType){
-            case CHAT -> message = Message.createCHAT(tokens[3]);
-            case GET_VAR -> message = Message.createGET_VARIABLE_REQUEST(tokens[3]);
-            default -> {
-                Logger.log("Invalid message type used in query:" + messageSubType.name());
-                return;
-            }
-        }
-        if (message == null) return;
 
         // send message directly to that peer
         peer.sendMessage(message);
@@ -179,29 +144,24 @@ public class QueryHandler implements Runnable{
             return;
         }
 
-        OnionConnection oc = null;
+        // check message arguments
+        Message message = checkMessageArgument(tokens[3], tokens[4]);
+        if(message == null){
+            return;
+        }
 
-        // 2nd argument check
+
+        OnionConnection oc = null;
+        // 1st argument check
         // "-n" - make a new onion connection with the final address being that corresponding to the 3rd argument
         // "-o" - use an already existing onion connection, with the index corresponding to the list
         if(tokens[1].equalsIgnoreCase("-n")){
+            // -n for new onion connection
 
-            // 3rd argument check
             // check address argument
-            String address = null;
-            try{
-                int i = Integer.parseInt(tokens[2]);
-                address = addresses[i];
-            }catch (IndexOutOfBoundsException e){
-                Logger.log("Index out of bounds for given peer list!", LogLevel.WARN);
+            String address = checkAddressArgument(tokens[2], addresses);
+            if(address == null) {
                 return;
-            }catch (NumberFormatException e){
-                address = tokens[2];
-            }
-
-            Peer peer = PeerList.getPeer(address);
-            if(peer == null){
-                Logger.log("No peer with given address!", LogLevel.WARN);
             }
 
             try {
@@ -212,42 +172,23 @@ public class QueryHandler implements Runnable{
             }
 
         }else if(tokens[1].equalsIgnoreCase("-o")){
+            // -o for using already established (old) connection
 
-            // 3rd argument check
+            // 3rd argument check - index of onion connection with the given list
             try{
                 int i = Integer.parseInt(tokens[2]);
                 oc = onionConnections[i];
             }catch (NumberFormatException | IndexOutOfBoundsException e){
-                Logger.log("Index argument for OSEND -o is either not a number or out of bounds for given list", LogLevel.WARN);
+                Logger.log("Index argument for OSEND -o is either not a number or out of bounds for given list!", LogLevel.WARN);
                 return;
             }
         }else{
-            Logger.log("Invalid second argument");
+            Logger.log("Invalid first argument for OSEND! It can be either -n or -o (case doesn't matter)", LogLevel.WARN);
             return;
         }
 
 
-        // 4th argument check - message type
-        MessageSubType messageSubType;
-
-        try {
-            messageSubType = MessageSubType.valueOf(tokens[3].toUpperCase());
-        }catch (IllegalArgumentException e){
-            Logger.log("Invalid message type:" + tokens[3].toUpperCase(), LogLevel.WARN);
-            return;
-        }
-
-        Message message = null;
-        switch (messageSubType){
-            case CHAT -> message = Message.createCHAT(tokens[4]);
-            case GET_VAR -> message = Message.createGET_VARIABLE_REQUEST(tokens[4]);
-            default -> {
-                Logger.log("Invalid message type used in query:" + messageSubType.name());
-                return;
-            }
-        }
-        if (message == null) return;
-
+        // wait for connection to be established
         while (!oc.isConnection_established()){
             Logger.log("Waiting for Onion Connection to be established ...");
             try {
@@ -257,9 +198,76 @@ public class QueryHandler implements Runnable{
             }
         }
 
+        // send the message with through the oc
         oc.sendMessage(message);
     }
     // end OSEND
+
+    // - OSENDN
+    private void handleOSendN(String input, String[] addresses, OnionConnection[] onionConnections){
+        // note
+        // if n <= 0
+        //  sending the message though the onion connection will be the same as directly sending the message to the final destination
+        // if n > PeerList.getSize()
+        //  - n is set to PeerList.getSize() - 1
+        //  - so the final destination isn't used as an in-between node
+        //  - and no peer is used twice in the onion routing as an in-between node
+
+        String[] tokens = input.split(" ", 6);
+        if(tokens.length < 6){
+            Logger.log("Query has too few arguments!", LogLevel.WARN);
+            return;
+        }
+
+        // tokens[0] == OSENDN
+
+        // tokens[1] == number of in-between nodes
+        int n;
+        try{
+            n = Integer.parseInt(tokens[1]);
+        }catch (NumberFormatException e){
+            Logger.log("Invalid number format for number of in-between peers for OSENDN!", LogLevel.WARN);
+            return;
+        }
+
+
+        // tokens[2] == peer index (in given peer list) / peer address of final destination for onion connection
+        //  check address argument
+        String address = checkAddressArgument(tokens[2], addresses);
+        if(address == null){
+            return;
+        }
+
+        //  check message argument
+        Message message = checkMessageArgument(tokens[3], tokens[4]);
+        if(message == null){
+            return;
+        }
+
+        // all args are ok
+        // establish onion connection
+        OnionConnection oc = null;
+        try {
+            oc = new OnionConnection(n, address);
+        } catch (IOException e) {
+            // logger in constructor
+            // although in this case it's probably redundant
+            // since arguments were checked earlier here
+            return;
+        }
+
+        while (!oc.isConnection_established()){
+            Logger.log("Waiting for Onion Connection to be established ...");
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Logger.log("Error in QueryHandler at currentThread.wait()", LogLevel.ERROR);
+            }
+        }
+        oc.sendMessage(message);
+    }
+    // end OSENDN
+
 
     // - TRACK
     private void handleTrack(String arg){
@@ -298,4 +306,61 @@ public class QueryHandler implements Runnable{
     // end CONNECT
 
     // end Input processing methods
+
+    // helper methods for validation
+    // address argument
+    private String checkAddressArgument(String address_arg, String[] addresses){
+        // returns null if invalid
+        // else the address received from the argument
+
+        String address = null;
+        try{
+            // check if it's an index for given peer list
+            int i = Integer.parseInt(address_arg);
+            address = addresses[i];
+        }catch (IndexOutOfBoundsException e){
+            Logger.log("Index out of bounds for given peer list!", LogLevel.WARN);
+            return null;
+        }catch (NumberFormatException e){
+            // else it's probably a literal value for address
+            // like 172.16.0.2
+            address = address_arg;
+            // check if you're connected to that address
+            Peer peer = PeerList.getPeer(address);
+            if(peer == null){
+                Logger.log("No peer with given address!", LogLevel.WARN);
+                return null;
+            }
+        }
+
+        return address;
+    }
+
+    // Message type and message argument
+    private Message checkMessageArgument(String msg_type, String msg_body){
+        // returns null if invalid message type
+        // anything is ok for message body
+
+        MessageSubType messageSubType;
+        try {
+            messageSubType = MessageSubType.valueOf(msg_type.toUpperCase());
+        }catch (IllegalArgumentException e){
+            Logger.log("Invalid message type:" + msg_type.toUpperCase(), LogLevel.WARN);
+            return null;
+        }
+
+        Message message = null;
+        switch (messageSubType){
+            case CHAT -> message = Message.createCHAT(msg_body);
+            case GET -> message = Message.createGET_REQUEST(msg_body);
+            default -> {
+                Logger.log("Invalid message type used in query:" + messageSubType.name());
+                return null;
+            }
+        }
+        return message;
+    }
+
+    // end helper methods for validation
+
 }

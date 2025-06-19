@@ -39,13 +39,14 @@ public class PeerList {
 
     // add
     public static boolean addPeer(Peer peer){
-        synchronized (lock) {
+
             if (peer.getAddress().equals("127.0.0.1")) {
                 Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
                 peer.disconnect();
                 return false;
             }
 
+        synchronized (lock) {
             if (peerMap.putIfAbsent(peer.getAddress(), peer) != null) {
 //                String address = peer.getAddress();
                 Logger.log("Duplicate connection with " + peer.getAddress() + ", closing connection ...", LogLevel.DEBUG);
@@ -76,7 +77,7 @@ public class PeerList {
     // getAddresses
     // get a list of all addresses excluding one
     // used for PEER_DISCOVERY
-    private static ArrayList<String> getAddressArrayList(String excludeAddr, int n){
+    private static ArrayList<String> getAddressArrayList(String excludeAddr, int n, boolean random){
         synchronized (lock) {
             ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
             addresses.remove(excludeAddr);
@@ -86,17 +87,19 @@ public class PeerList {
             } else if (n > addresses.size()) {
                 n = addresses.size();
             }
-            Collections.shuffle(addresses);
+            if(random) {
+                Collections.shuffle(addresses);
+            }
             return new ArrayList<>(addresses.subList(0, n));
         }
     }
-    public static String[] getAddressArray(String excludeAddr, int n){
-        return getAddressArrayList(excludeAddr, n).toArray(new String[0]);
+    public static String[] getAddressArray(String excludeAddr, int n, boolean random){
+        return getAddressArrayList(excludeAddr, n, random).toArray(new String[0]);
     }
 
     // returns one string joined by ";"
-    public static String getAddressList(String excludeAddr, int n){
-        String[] addresses = getAddressArray(excludeAddr, n);
+    public static String getAddressList(String excludeAddr, int n, boolean random){
+        String[] addresses = getAddressArray(excludeAddr, n, random);
         return String.join(";", addresses);
     }
 

@@ -4,7 +4,6 @@ import Util.Logger;
 
 import java.io.IOException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MessageHandling {
@@ -27,7 +26,7 @@ public class MessageHandling {
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REQUEST(message, sender);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REQUEST(message, sender);
                 case ONION -> handleONION_REQUEST(message, sender);
-                case GET_VAR -> handleGET_VARIABLE_REQUEST(message, sender);
+                case GET -> handleGET_REQUEST(message, sender);
             }
         }else if (!MyOnionConnectionList.checkReply(message) && !OnionHandlerWaiting(message)){
             // - check if REPLY needs to be processed by an ONION connection
@@ -39,7 +38,7 @@ public class MessageHandling {
                 case PEER_DISCOVERY -> handlePEER_DISCOVERY_REPLY(message);
                 case KEY_EXCHANGE -> handleKEY_EXCHANGE_REPLY(message);
                 case ONION -> handleONION_REPLY(message);
-                case GET_VAR -> handleGET_VARIABLE_REPLY(message, sender);
+                case GET -> handleGET_REPLY(message, sender);
             }
         }
     }
@@ -128,8 +127,8 @@ public class MessageHandling {
 
 
     // GET_VARIABLE
-    private static void handleGET_VARIABLE_REQUEST(Message request, Peer sender){
-        sender.sendMessage(Message.createGET_VARIABLE_REPLY(request));
+    private static void handleGET_REQUEST(Message request, Peer sender){
+        sender.sendMessage(Message.createGET_REPLY(request));
     }
 
     // end REQUEST Handlers
@@ -218,7 +217,7 @@ public class MessageHandling {
     }
 
     // GET_VARIABLE
-    private static void handleGET_VARIABLE_REPLY(Message reply, Peer sender){
+    private static void handleGET_REPLY(Message reply, Peer sender){
         Logger.chat(sender.getAddress(), reply.getBody());
     }
 
