@@ -28,7 +28,7 @@ public class Peer implements Runnable {
 
     // 1 - from a socket
     // when someone connects to you
-    public Peer(Socket socket) throws IOException{
+    public Peer(Socket socket){
         this.socket = socket;
 
         try {
@@ -40,14 +40,21 @@ public class Peer implements Runnable {
         }
 
         // peer adds itself to PeerList if no error happens
-        if(!PeerList.addPeer(this)){
-            throw new IOException();
-        }
+        PeerList.addPeer(this);
     }
 
     //  2 - from an address
     //  when you're trying to connect to someone
     public Peer(String address) throws IOException{
+        // duplicate connection check
+        address = Global.getNormalFormAddress(address);
+        if(PeerList.getPeer(address) != null){
+            throw new IOException();
+        }
+        if(Global.getMyIp().equals(address) || "127.0.0.1".equals(address)) {
+//            Logger.log(address + " is your address!", LogLevel.WARN);
+            throw new IOException();
+        }
 
         // try to create socket
         try {
@@ -67,10 +74,7 @@ public class Peer implements Runnable {
         }
 
         // peer adds itself to PeerList if no error happens
-        if(!PeerList.addPeer(this)){
-            // so that you don't send messages if connection is closed
-            throw new IOException();
-        }
+        PeerList.addPeer(this);
     }
     // end  constructors
 
@@ -151,6 +155,26 @@ public class Peer implements Runnable {
             writer.close();
             reader.close();
             Logger.log("Successfully closed connection with peer [" + address + "]", LogLevel.SUCCESS);
+
+            // return here if it's a duplicate
+            if(Global.getMyIp().equals(address) || "127.0.0.1".equals(address)){
+                return true;
+            }
+
+
+            // try to connect again - in case the connection is closed from both sides
+            // say P1 connects to P2 through connection A1 and adds it to PeerList
+            // P2 connects to P1 through connection A2 and adds it to PeerList
+            // P1 sees A2 as a duplicate and drops it
+            // P2 sees A1 as a duplicate and drops it
+            // connection is dropped but both nodes are still online
+            // so the one with higher address tries to connect again
+            // so the same thing doesn't repeat - when MAC sublayer you learned from Computer Networks comes in useful :D
+            if(Global.getMyIp().compareTo(address) > 0){
+                Logger.log("Bigger address, trying to reconnect ... ", LogLevel.DEBUG);
+                new Peer(address);
+            }
+
             return true;
         } catch (IOException e) {
             Logger.log("Error in trying to close connection with peer [" + address + "]", LogLevel.ERROR);

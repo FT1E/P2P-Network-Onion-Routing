@@ -164,7 +164,19 @@ public class OnionConnection implements Runnable {
         //  it is added to this OC's message queue
         MyOnionConnectionList.addRequest(message.getId(), this);
         //  send it
-        PeerList.getPeer(addresses[0]).sendMessage(message);
+        Peer peer = PeerList.getPeer(addresses[0]);
+        if(peer == null){
+            Logger.log("Not connected to first onion router in list, trying to connect to [" + addresses[0] + "] ...", LogLevel.WARN);
+            try {
+                peer = new Peer(addresses[0]);
+                Logger.log("Successfully connected to [" + addresses[0] + "]", LogLevel.SUCCESS);
+            } catch (IOException e) {
+                Logger.log("Failed to connect to [" + addresses[0] + "], dropping onion connection ...", LogLevel.ERROR);
+                MyOnionConnectionList.remove(this);
+                return;
+            }
+        }
+        peer.sendMessage(message);
     }
 
     public void dropConnection(){

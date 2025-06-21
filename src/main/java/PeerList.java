@@ -36,21 +36,23 @@ public class PeerList {
 
     // get by address
     public static Peer getPeer(String address){
-        address = Global.getNormalFormAddress(address);
-        return peerMap.get(address);
+        synchronized (lock) {
+            address = Global.getNormalFormAddress(address);
+            return peerMap.get(address);
+        }
     }
 
     // add
     public static boolean addPeer(Peer peer){
 
-            if (peer.getAddress().equals("127.0.0.1")) {
+            if ("127.0.0.1".equals(peer.getAddress()) || Global.getMyIp().equals(peer.getAddress())) {
                 Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
                 peer.disconnect();
                 return false;
             }
 
         synchronized (lock) {
-            if (peerMap.putIfAbsent(peer.getAddress(), peer) != null) {
+            if (peerMap.get(peer.getAddress()) != null) {
 //                String address = peer.getAddress();
                 Logger.log("Duplicate connection with " + peer.getAddress() + ", closing connection ...", LogLevel.DEBUG);
                 peer.disconnect();
@@ -58,7 +60,7 @@ public class PeerList {
                 return false;
             }
 
-
+            peerMap.put(peer.getAddress(), peer);
             Logger.log("New peer added! Address: " + peer.getAddress());
             // - submit to thread pool - so it can read and process messages from the peer
             threadPool.submit(peer);
@@ -81,6 +83,7 @@ public class PeerList {
     // get a list of all addresses excluding one
     // used for PEER_DISCOVERY
     private static ArrayList<String> getAddressArrayList(String excludeAddr, int n, boolean random){
+        excludeAddr = Global.getNormalFormAddress(excludeAddr);
         synchronized (lock) {
             ArrayList<String> addresses = new ArrayList<>(Collections.list(peerMap.keys()));
             addresses.remove(excludeAddr);

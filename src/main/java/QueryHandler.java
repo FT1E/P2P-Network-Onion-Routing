@@ -298,6 +298,11 @@ public class QueryHandler implements Runnable{
             Logger.log("Already connected to [" + address + "]");
             return;
         }
+        address = Global.getNormalFormAddress(address);
+        if(Global.getMyIp().equals(address) || "127.0.0.1".equals(address)) {
+            Logger.log(address + " is your address!", LogLevel.WARN);
+        }
+
         try {
             Peer peer = new Peer(address);
             peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());

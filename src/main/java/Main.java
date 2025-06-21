@@ -18,27 +18,7 @@ public class Main {
             Global.addVariable("var" + i, "val" + i);
         }
 
-        Global.setTrack(false);
-
-        // since everyone is connecting to peer1
-        // to make sure the node has started the server first
-        // before they try to connect to him
-        if(!"peer1".equals(System.getenv("PEER_ID"))) {
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
-            }
-        }else{
-            // also peer1 should make sure peer2 has started his server
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Logger.log("Error in main at currentThread.wait()", LogLevel.ERROR);
-            }
-        }
-
-
+//        Global.setTrack(false);
 
 
         //  - connect to a booststrap address (env variable) if available
@@ -48,8 +28,8 @@ public class Main {
         if(bootstrap_address != null) {
             do {
                 try {
-                    Peer peer = new Peer(bootstrap_address);
-                    peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+                    new Peer(bootstrap_address);
+//                    peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
                     break;
                 } catch (IOException e) {
                     // logger in constructor
@@ -61,8 +41,23 @@ public class Main {
                     Logger.log("Error in thread.sleep!", LogLevel.ERROR);
                 }
 
-            } while (PeerList.getPeer(bootstrap_address) != null);
+            } while (PeerList.getPeer(bootstrap_address) == null);
+
+            // wait a second in case the connection gets dropped
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Logger.log("Error in thread.sleep!", LogLevel.ERROR);
+            }
+
+            Peer peer = PeerList.getPeer(bootstrap_address);
+            if(peer != null){
+                while(!peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST())){
+                    peer = PeerList.getPeer(bootstrap_address);
+                }
+            }
         }
+
         // - api for sending messages
         new Thread(new QueryHandler()).start();
 
