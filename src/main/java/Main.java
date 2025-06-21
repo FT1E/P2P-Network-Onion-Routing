@@ -11,6 +11,9 @@ public class Main {
         //  - start a server
         new Thread(new Server(Global.getSERVER_PORT())).start();
 
+        Global.setMyIp(Global.findMyIp());
+
+
         for (int i = 0; i < 10; i++) {
             Global.addVariable("var" + i, "val" + i);
         }
@@ -41,17 +44,25 @@ public class Main {
         //  - connect to a booststrap address (env variable) if available
         //  - otherwise you can connect to someone with CONNECT command in QueryHandler
         //  - once you connect to someone you immediately send them a PEER_DISCOVERY request
-        if(System.getenv("BOOTSTRAP_ADDRESS") != null) {
-            try {
-                Peer peer = new Peer(System.getenv("BOOTSTRAP_ADDRESS"));
-                Thread.sleep(1000);
-                peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
-            } catch (IOException | InterruptedException e) {
-                // logger in constructor
-            }
+        String bootstrap_address = System.getenv("BOOTSTRAP_ADDRESS");
+        if(bootstrap_address != null) {
+            do {
+                try {
+                    Peer peer = new Peer(bootstrap_address);
+                    peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST());
+                    break;
+                } catch (IOException e) {
+                    // logger in constructor
+                }
 
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Logger.log("Error in thread.sleep!", LogLevel.ERROR);
+                }
+
+            } while (PeerList.getPeer(bootstrap_address) != null);
         }
-
         // - api for sending messages
         new Thread(new QueryHandler()).start();
 

@@ -68,7 +68,7 @@ public class QueryHandler implements Runnable{
     }
 
     private String formatOCArray(OnionConnection[] oc){
-        String output = "\n\tOnion Connection List:\n\t#\tNodes used\t\t\t\tFinal address\n";
+        String output = "\n\tOnion Connection List: [nodes used] <Final address>\n\t#\n";
         for (int i = 0; i < oc.length; i++) {
             output += "\t" + i + "\t" + Arrays.toString(oc[i].getMiddleNodes()) + "\t" + oc[i].getFinalAddress() + "\n";
         }
@@ -122,7 +122,9 @@ public class QueryHandler implements Runnable{
         // check address argument
         String address = checkAddressArgument(tokens[1], addresses);
         Peer peer = PeerList.getPeer(address);
-
+        if(peer == null){
+            return;
+        }
 
         // check message argument
         Message message = checkMessageArgument(tokens[2], tokens[3]);
@@ -151,7 +153,7 @@ public class QueryHandler implements Runnable{
         }
 
 
-        OnionConnection oc = null;
+        OnionConnection oc;
         // 1st argument check
         // "-n" - make a new onion connection with the final address being that corresponding to the 3rd argument
         // "-o" - use an already existing onion connection, with the index corresponding to the list

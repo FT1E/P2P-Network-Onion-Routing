@@ -1,6 +1,8 @@
 import Util.LogLevel;
 import Util.Logger;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,6 +36,7 @@ public class PeerList {
 
     // get by address
     public static Peer getPeer(String address){
+        address = Global.getNormalFormAddress(address);
         return peerMap.get(address);
     }
 

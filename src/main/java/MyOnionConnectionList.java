@@ -71,8 +71,8 @@ public class MyOnionConnectionList {
             // you're a middle man, so take key from OnionKeys, encrypt and send it back
             return false;
         }
-        // you're the original sender so pass on the processing to oc's message queue
-        oc.addMessageToQueue(message);
+        // you're the original sender so process the message with the oc
+        oc.handleMessage(message);
         return true;
     }
 }

@@ -27,7 +27,7 @@ public class OnionConnection implements Runnable {
 
     // Constructors
     public OnionConnection(int n, String final_dest) throws IOException{
-        final_address = final_dest;
+        final_address = Global.getNormalFormAddress(final_dest);
         if(PeerList.getPeer(final_address) == null){
             Logger.log("Final address for onion connection not present in PeerList:" + final_address, LogLevel.ERROR);
             throw new IOException();
@@ -46,7 +46,7 @@ public class OnionConnection implements Runnable {
     }
 
     public OnionConnection(String final_dest) throws IOException{
-        final_address = final_dest;
+        final_address = Global.getNormalFormAddress(final_dest);
         if(PeerList.getPeer(final_address) == null){
             Logger.log("Final address for onion connection not present in PeerList:" + final_address, LogLevel.ERROR);
             throw new IOException();
@@ -134,24 +134,6 @@ public class OnionConnection implements Runnable {
         setConnection_established(true);
         Logger.log("Successfully established OnionConnection with in-between addresses:" + Arrays.toString(addresses) + "; and final address " + final_address, LogLevel.SUCCESS);
 
-        // 2 - process messages
-        while (isConnection_established() || !messageQueue.isEmpty()){
-            try {
-                message = messageQueue.take();
-            } catch (InterruptedException e) {
-                Logger.log("Error extracting message from queue", LogLevel.WARN);
-                continue;
-            }
-            if(message.equals(quitMessage)){
-                break;
-            }
-            message = decrypt(message);
-            MessageHandling.handle(message, PeerList.getPeer(final_address));
-        }
-
-        // - send a message which tells each node on the path to drop connection, i.e. forget the key
-        dropConnection();
-        MyOnionConnectionList.remove(this);
     }
 
 
@@ -202,6 +184,7 @@ public class OnionConnection implements Runnable {
 
         //  send it
         PeerList.getPeer(addresses[0]).sendMessage(message);
+        MyOnionConnectionList.remove(this);
     }
 
 
@@ -212,7 +195,7 @@ public class OnionConnection implements Runnable {
 
             if(inner.equals(symmetricKeys[i].encrypt(Global.getOCDropPhrase()))){
                 setConnection_established(false);
-                addMessageToQueue(quitMessage);
+                dropConnection();
 //                Logger.log("Received encrypted drop phrase for dropping onion connection!", LogLevel.DEBUG);
                 return null;
             }
@@ -231,10 +214,21 @@ public class OnionConnection implements Runnable {
 
     // used for adding messages to processing queue
     // only if message was sent by this Onion Connection
-    public void addMessageToQueue(Message message){
+    private void addMessageToQueue(Message message){
         messageQueue.add(message);
     }
 
+    public void handleMessage(Message message){
+        if(isConnection_established()) {
+            message = decrypt(message);
+            MessageHandling.handle(message, PeerList.getPeer(final_address));
+        }else{
+            // during key exchange protocol
+            // taken from the queue in run method
+            addMessageToQueue(message);
+        }
+
+    }
 
     // getters
 
