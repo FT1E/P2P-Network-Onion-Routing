@@ -50,12 +50,15 @@ public class Main {
                 Logger.log("Error in thread.sleep!", LogLevel.ERROR);
             }
 
-            Peer peer = PeerList.getPeer(bootstrap_address);
-            if(peer != null){
-                while(!peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST())){
-                    peer = PeerList.getPeer(bootstrap_address);
-                }
-            }
+            // in a do while loop in case the connection gets dropped from both sides
+            // explained in more detail how it happens in Peer.disconnect()
+            // but simply just waiting until it gets resolved
+            Peer peer;
+            do{
+                peer = PeerList.getPeer(bootstrap_address);
+                // stops once peer != null and sendMessage returns true
+            }while(peer == null || !peer.sendMessage(Message.createPEER_DISCOVERY_REQUEST()));
+
         }
 
         // - api for sending messages
