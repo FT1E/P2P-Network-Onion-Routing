@@ -45,7 +45,7 @@ public class PeerList {
     // add
     public static boolean addPeer(Peer peer){
 
-            if ("127.0.0.1".equals(peer.getAddress()) || Global.getMyIp().equals(peer.getAddress())) {
+            if ("127.0.0.1".equals(peer.getAddress())) {
                 Logger.log("Connected to myself, closing connection ...", LogLevel.DEBUG);
                 peer.disconnect();
                 return false;
@@ -64,6 +64,7 @@ public class PeerList {
             Logger.log("New peer added! Address: " + peer.getAddress());
             // - submit to thread pool - so it can read and process messages from the peer
             threadPool.submit(peer);
+//            Logger.log("Adding peer! New Peer count: " + getSize(), LogLevel.DEBUG);
             return true;
         }
     }
@@ -72,7 +73,9 @@ public class PeerList {
     public static boolean removePeer(Peer peer){
 //        Logger.log("AddressList before removing peer:" + getAddressList("."));
         synchronized (lock) {
-            return peerMap.remove(peer.getAddress(), peer);
+            boolean res = peerMap.remove(peer.getAddress(), peer);
+//            Logger.log("After remove attempt, Peer count: " + getSize(), LogLevel.DEBUG);
+            return res;
         }
     }
     // end Dictionary methods

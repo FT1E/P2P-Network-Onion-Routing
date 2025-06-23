@@ -47,12 +47,7 @@ public class Peer implements Runnable {
     //  when you're trying to connect to someone
     public Peer(String address) throws IOException{
         // duplicate connection check
-        address = Global.getNormalFormAddress(address);
         if(PeerList.getPeer(address) != null){
-            throw new IOException();
-        }
-        if(Global.getMyIp().equals(address) || "127.0.0.1".equals(address)) {
-//            Logger.log(address + " is your address!", LogLevel.WARN);
             throw new IOException();
         }
 
@@ -148,20 +143,17 @@ public class Peer implements Runnable {
     public boolean disconnect(){
 
         String address = getAddress();
-
+        PeerList.removePeer(this);
+        boolean res = true;
         try {
-            PeerList.removePeer(this);
             socket.close();
             writer.close();
             reader.close();
             Logger.log("Successfully closed connection with peer [" + address + "]", LogLevel.SUCCESS);
-
-            // return here if it's a duplicate
-            if(Global.getMyIp().equals(address) || "127.0.0.1".equals(address)){
-                return true;
-            }
-
-
+        } catch (IOException e) {
+            Logger.log("Error in trying to close connection with peer [" + address + "]", LogLevel.ERROR);
+            res = false;
+        } finally {
             // try to connect again - in case the connection is closed from both sides
             // say P1 connects to P2 through connection A1 and adds it to PeerList
             // P2 connects to P1 through connection A2 and adds it to PeerList
@@ -170,16 +162,18 @@ public class Peer implements Runnable {
             // connection is dropped but both nodes are still online
             // so the one with higher address tries to connect again
             // so the same thing doesn't repeat - when MAC sublayer you learned from Computer Networks comes in useful :D
-            if(Global.getMyIp().compareTo(address) > 0){
-                Logger.log("Bigger address, trying to reconnect ... ", LogLevel.DEBUG);
-                new Peer(address);
-            }
 
-            return true;
-        } catch (IOException e) {
-            Logger.log("Error in trying to close connection with peer [" + address + "]", LogLevel.ERROR);
-            return false;
+            // but check first if this was a connection with yourself - if it was the loopback address 127.0.0.1
+            if(!"127.0.0.1".equals(address) && PeerList.getPeer(address) == null && Global.getMyIp().compareTo(address) > 0){
+                Logger.log("Bigger address, trying to reconnect ... ", LogLevel.DEBUG);
+                try {
+                    new Peer(address);
+                } catch (IOException e) {
+                    // Logger in constructor
+                }
+            }
         }
+        return res;
     }
     // end disconnect
 

@@ -96,7 +96,7 @@ public class QueryHandler implements Runnable{
         switch (tokens[0].toUpperCase()){
             case "DSEND" -> handleDSend(input, addresses);
             case "OSEND" -> handleOSend(input, addresses, onionConnections);
-            case "OSENDN" -> handleOSendN(input, addresses, onionConnections);
+//            case "OSENDN" -> handleOSendN(input, addresses, onionConnections);
             case "TRACK" -> handleTrack(tokens[1]);
             case "CREATE" -> handleCreate(tokens[1]);
             case "CONNECT" -> handleConnect(tokens[1]);
@@ -146,8 +146,20 @@ public class QueryHandler implements Runnable{
             return;
         }
 
+        Message message;
+        if(tokens[1].equalsIgnoreCase("-n")){
+            tokens = input.split(" ", 6);
+            if(tokens.length < 6){
+                Logger.log("Query has too few arguments!", LogLevel.WARN);
+                return;
+            }
+            message = checkMessageArgument(tokens[4], tokens[5]);
+
+        }else{
+            message = checkMessageArgument(tokens[3], tokens[4]);
+        }
+
         // check message arguments
-        Message message = checkMessageArgument(tokens[3], tokens[4]);
         if(message == null){
             return;
         }
@@ -158,6 +170,29 @@ public class QueryHandler implements Runnable{
         // "-n" - make a new onion connection with the final address being that corresponding to the 3rd argument
         // "-o" - use an already existing onion connection, with the index corresponding to the list
         if(tokens[1].equalsIgnoreCase("-n")){
+
+            int n;
+            try {
+                n = Integer.parseInt(tokens[2]);
+            }catch (NumberFormatException e){
+                Logger.log("Invalid number format for number of in-between peers for OSEND -n!", LogLevel.WARN);
+                return;
+            }
+
+            // check address argument
+            String address = checkAddressArgument(tokens[3], addresses);
+            if(address == null) {
+                return;
+            }
+
+            try {
+                oc = new OnionConnection(n, address);
+            } catch (IOException e) {
+                // Logger in constructor
+                return;
+            }
+
+        }else if(tokens[1].equalsIgnoreCase("-d")){
             // -n for new onion connection
 
             // check address argument
@@ -185,7 +220,7 @@ public class QueryHandler implements Runnable{
                 return;
             }
         }else{
-            Logger.log("Invalid first argument for OSEND! It can be either -n or -o (case doesn't matter)", LogLevel.WARN);
+            Logger.log("Invalid first argument for OSEND! It can be either -n, -d or -o (case doesn't matter)", LogLevel.WARN);
             return;
         }
 
@@ -204,72 +239,6 @@ public class QueryHandler implements Runnable{
         oc.sendMessage(message);
     }
     // end OSEND
-
-    // - OSENDN
-    private void handleOSendN(String input, String[] addresses, OnionConnection[] onionConnections){
-        // note
-        // if n <= 0
-        //  sending the message though the onion connection will be the same as directly sending the message to the final destination
-        // if n > PeerList.getSize()
-        //  - n is set to PeerList.getSize() - 1
-        //  - so the final destination isn't used as an in-between node
-        //  - and no peer is used twice in the onion routing as an in-between node
-
-        String[] tokens = input.split(" ", 5);
-        if(tokens.length < 5){
-            Logger.log("Query has too few arguments!", LogLevel.WARN);
-            return;
-        }
-
-        // tokens[0] == OSENDN
-
-        // tokens[1] == number of in-between nodes
-        int n;
-        try{
-            n = Integer.parseInt(tokens[1]);
-        }catch (NumberFormatException e){
-            Logger.log("Invalid number format for number of in-between peers for OSENDN!", LogLevel.WARN);
-            return;
-        }
-
-
-        // tokens[2] == peer index (in given peer list) / peer address of final destination for onion connection
-        //  check address argument
-        String address = checkAddressArgument(tokens[2], addresses);
-        if(address == null){
-            return;
-        }
-
-        //  check message argument
-        Message message = checkMessageArgument(tokens[3], tokens[4]);
-        if(message == null){
-            return;
-        }
-
-        // all args are ok
-        // establish onion connection
-        OnionConnection oc = null;
-        try {
-            oc = new OnionConnection(n, address);
-        } catch (IOException e) {
-            // logger in constructor
-            // although in this case it's probably redundant
-            // since arguments were checked earlier here
-            return;
-        }
-
-        while (!oc.isConnection_established()){
-            Logger.log("Waiting for Onion Connection to be established ...");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Logger.log("Error in QueryHandler at currentThread.wait()", LogLevel.ERROR);
-            }
-        }
-        oc.sendMessage(message);
-    }
-    // end OSENDN
-
 
     // - TRACK
     private void handleTrack(String arg){
